@@ -98,3 +98,11 @@ The tool is implemented as a Python class that orchestrates the various tools in
 - Parameter discovery: arjun
 - Broken link detection: socialhunter
 - Port scanning: nmap
+
+## Windows and cross-platform notes
+
+- The ReconMaster Python scripts now include small pure-Python helpers to avoid shell-only commands (merge/sort of text files, safer subprocess calls). This improves compatibility with Windows (PowerShell) and environments without Unix utilities.
+- Many external recon tools (subfinder, httpx, ffuf, gowitness, etc.) are Go or native Linux tools and may require WSL or a Linux environment on Windows. For full functionality on Windows, use WSL2 or run ReconMaster inside a Linux VM/container.
+- A minimal bundled `wordlists/` folder is included so some basic scans can run without SecLists installed.
+
+If you plan to run on Windows, the recommended approach is to use WSL2 and install the Go-based tools there, or run inside the Ubuntu terminal provided by WSL.

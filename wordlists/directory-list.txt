@@ -1,0 +1,6 @@
+admin
+login
+dashboard
+uploads
+images
+api

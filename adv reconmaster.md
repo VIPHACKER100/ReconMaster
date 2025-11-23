@@ -56,7 +56,7 @@ ReconMaster is a comprehensive reconnaissance automation framework designed for 
 
 1. Save the installation script to your system:
 ```bash
-curl -o install_reconmaster.sh https://raw.githubusercontent.com/viphacker-100/ReconMaster/main/install_reconmaster.sh
+curl -o install_reconmaster.sh https://raw.githubusercontent.com/viphacker100/ReconMaster/main/install_reconmaster.sh
 ```
 
 2. Make it executable:
@@ -265,5 +265,5 @@ Distributed under the MIT License. See `LICENSE` for more information.
 ---
 
 <p align="center">
-  Made with ❤️ by <a href="https://github.com/viphacker-100">viphacker-100</a>
+  Made with ❤️ by <a href="https://github.com/viphacker100">viphacker100</a>
 </p>

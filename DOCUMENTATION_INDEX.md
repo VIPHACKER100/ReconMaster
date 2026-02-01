@@ -282,9 +282,9 @@ See: [PHASE_19_GUIDE.md](PHASE_19_GUIDE.md) (CI/CD section)
 - [Verification Checklist](PHASE_19_VERIFICATION.md)
 
 ### External Links
-- [GitHub Repository](https://github.com/yourusername/ReconMaster)
+- [GitHub Repository](https://github.com/VIPHACKER100/ReconMaster)
 - [PyPI Package](https://pypi.org/project/reconmaster/)
-- [Docker Hub](https://hub.docker.com/r/yourusername/reconmaster)
+- [Docker Hub](https://hub.docker.com/r/VIPHACKER100/reconmaster)
 
 ---
 

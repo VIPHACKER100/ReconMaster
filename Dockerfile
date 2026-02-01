@@ -87,8 +87,8 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
 # Labels for container metadata
 LABEL org.opencontainers.image.title="ReconMaster"
 LABEL org.opencontainers.image.description="Automated Reconnaissance Framework for Security Testing"
-LABEL org.opencontainers.image.url="https://github.com/yourusername/ReconMaster"
-LABEL org.opencontainers.image.documentation="https://github.com/yourusername/ReconMaster/wiki"
-LABEL org.opencontainers.image.source="https://github.com/yourusername/ReconMaster"
+LABEL org.opencontainers.image.url="https://github.com/VIPHACKER100/ReconMaster"
+LABEL org.opencontainers.image.documentation="https://github.com/VIPHACKER100/ReconMaster/wiki"
+LABEL org.opencontainers.image.source="https://github.com/VIPHACKER100/ReconMaster"
 LABEL org.opencontainers.image.version="1.0.0"
 LABEL org.opencontainers.image.licenses="MIT"

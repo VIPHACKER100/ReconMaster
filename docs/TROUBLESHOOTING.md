@@ -460,7 +460,7 @@ wsl --install
 **WSL can't access Windows files properly**:
 ```bash
 # From WSL
-cd /mnt/c/Users/YourUsername/ReconMaster
+cd /mnt/c/Users/VIPHACKER100/ReconMaster
 ```
 
 **Port scanning with nmap fails in WSL**:

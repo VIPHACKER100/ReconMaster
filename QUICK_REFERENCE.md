@@ -21,7 +21,7 @@ docker run reconmaster:latest -d example.com
 
 ### Source (Recommended for Developers)
 ```bash
-git clone https://github.com/yourusername/ReconMaster.git
+git clone https://github.com/VIPHACKER100/ReconMaster.git
 cd ReconMaster
 pip install -e .
 ```
@@ -354,7 +354,7 @@ A: Use `--rate-limit 2.0` and `--passive-only` flags.
 A: Yes, via Docker or WSL2. Docker is recommended.
 
 **Q: How do I report issues?**  
-A: Use GitHub Issues: [issues](https://github.com/yourusername/ReconMaster/issues)
+A: Use GitHub Issues: [issues](https://github.com/VIPHACKER100/ReconMaster/issues)
 
 **Q: Is there a commercial version?**  
 A: Not yet. See Phase 11 for potential premium variants.

@@ -40,11 +40,11 @@ setup(
     description="Automated Reconnaissance Framework for Security Testing",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/yourusername/ReconMaster",
+    url="https://github.com/VIPHACKER100/ReconMaster",
     project_urls={
-        "Bug Tracker": "https://github.com/yourusername/ReconMaster/issues",
-        "Documentation": "https://github.com/yourusername/ReconMaster/wiki",
-        "Source Code": "https://github.com/yourusername/ReconMaster",
+        "Bug Tracker": "https://github.com/VIPHACKER100/ReconMaster/issues",
+        "Documentation": "https://github.com/VIPHACKER100/ReconMaster/wiki",
+        "Source Code": "https://github.com/VIPHACKER100/ReconMaster",
     },
     license="MIT",
     

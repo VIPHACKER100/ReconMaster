@@ -37,7 +37,7 @@ docker run -it reconmaster:latest -d example.com
 
 ### Method 3: Source
 ```bash
-git clone https://github.com/yourusername/ReconMaster.git
+git clone https://github.com/VIPHACKER100/ReconMaster.git
 cd ReconMaster
 pip install -e .
 reconmaster -d example.com
@@ -148,7 +148,7 @@ docker run reconmaster:latest -d example.com
 
 ### Source (Development)
 ```bash
-git clone https://github.com/yourusername/ReconMaster.git
+git clone https://github.com/VIPHACKER100/ReconMaster.git
 cd ReconMaster
 pip install -e .
 ```
@@ -257,8 +257,8 @@ ReconMaster is for authorized security testing only. Always obtain proper author
 ## 🆘 Support
 
 - **Documentation**: See guides in root directory
-- **Issues**: [GitHub Issues](https://github.com/yourusername/ReconMaster/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/yourusername/ReconMaster/discussions)
+- **Issues**: [GitHub Issues](https://github.com/VIPHACKER100/ReconMaster/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/VIPHACKER100/ReconMaster/discussions)
 - **Email**: [Your Email]
 
 ## 📚 Phase Completion Summary

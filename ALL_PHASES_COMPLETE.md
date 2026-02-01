@@ -217,7 +217,7 @@ pip install reconmaster
 docker run reconmaster:latest -d example.com
 
 # Source
-git clone https://github.com/yourusername/ReconMaster.git
+git clone https://github.com/VIPHACKER100/ReconMaster.git
 cd ReconMaster && pip install -e .
 ```
 

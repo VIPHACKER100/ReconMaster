@@ -586,8 +586,8 @@ docker-compose down
 ## Support
 
 - **Documentation:** See [PHASE_19_GUIDE.md](PHASE_19_GUIDE.md)
-- **Docker Hub:** [reconmaster:latest](https://hub.docker.com/r/yourusername/reconmaster)
-- **Issues:** [GitHub Issues](https://github.com/yourusername/ReconMaster/issues)
+- **Docker Hub:** [reconmaster:latest](https://hub.docker.com/r/VIPHACKER100/reconmaster)
+- **Issues:** [GitHub Issues](https://github.com/VIPHACKER100/ReconMaster/issues)
 
 ---
 

@@ -62,7 +62,7 @@ pip install --upgrade reconmaster==1.0.0
 
 ```bash
 # Clone repository
-git clone https://github.com/yourusername/ReconMaster.git
+git clone https://github.com/VIPHACKER100/ReconMaster.git
 cd ReconMaster
 
 # Install in editable mode (for development)
@@ -415,20 +415,20 @@ pip uninstall -y reconmaster
 
 ```bash
 # Install latest development version
-pip install git+https://github.com/yourusername/ReconMaster.git
+pip install git+https://github.com/VIPHACKER100/ReconMaster.git
 
 # Install specific branch
-pip install git+https://github.com/yourusername/ReconMaster.git@develop
+pip install git+https://github.com/VIPHACKER100/ReconMaster.git@develop
 
 # Install specific commit
-pip install git+https://github.com/yourusername/ReconMaster.git@abc123
+pip install git+https://github.com/VIPHACKER100/ReconMaster.git@abc123
 ```
 
 ### Building from Source
 
 ```bash
 # Clone repository
-git clone https://github.com/yourusername/ReconMaster.git
+git clone https://github.com/VIPHACKER100/ReconMaster.git
 cd ReconMaster
 
 # Install build tools
@@ -587,7 +587,7 @@ reconmaster -d example.com
 ### Example 2: Development Setup
 
 ```bash
-git clone https://github.com/yourusername/ReconMaster.git
+git clone https://github.com/VIPHACKER100/ReconMaster.git
 cd ReconMaster
 pip install -e ".[dev,test]"
 pytest tests/
@@ -640,8 +640,8 @@ done < domains.txt
 
 - **Documentation:** See [PHASE_19_GUIDE.md](PHASE_19_GUIDE.md)
 - **PyPI:** [reconmaster](https://pypi.org/project/reconmaster/)
-- **GitHub:** [ReconMaster](https://github.com/yourusername/ReconMaster)
-- **Issues:** [GitHub Issues](https://github.com/yourusername/ReconMaster/issues)
+- **GitHub:** [ReconMaster](https://github.com/VIPHACKER100/ReconMaster)
+- **Issues:** [GitHub Issues](https://github.com/VIPHACKER100/ReconMaster/issues)
 
 ---
 

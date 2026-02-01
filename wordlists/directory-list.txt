@@ -4,3 +4,9 @@ dashboard
 uploads
 images
 api
+admin
+login
+dashboard
+uploads
+images
+api

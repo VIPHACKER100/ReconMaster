@@ -1,0 +1,58 @@
+# Include documentation files
+include README.md
+include README_comprehensive.md
+include CHANGELOG.md
+include LEGAL.md
+include LICENSE
+include CONTRIBUTING.md
+
+# Include Phase documentation
+recursive-include . PHASE_*.md
+recursive-include . QUICKREF.md
+recursive-include . INDEX.md
+
+# Include test files
+recursive-include tests *
+
+# Include wordlists
+recursive-include wordlists *
+
+# Include scripts
+recursive-include scripts *
+
+# Include configuration
+include setup.py
+include setup.cfg
+include pyproject.toml
+include pytest.ini
+include .flake8
+include requirements.txt
+
+# Exclude unnecessary files
+exclude .git
+exclude .gitignore
+exclude .github
+exclude .gitlab-ci.yml
+exclude .travis.yml
+exclude Dockerfile
+exclude docker-compose.yml
+exclude .dockerignore
+exclude .vscode
+exclude .idea
+exclude *.pyc
+exclude __pycache__
+exclude .pytest_cache
+exclude .mypy_cache
+exclude .coverage
+exclude htmlcov
+exclude dist
+exclude build
+exclude *.egg-info
+exclude .env
+exclude .env.*
+
+# Global excludes
+global-exclude __pycache__
+global-exclude *.py[cod]
+global-exclude *$py.class
+global-exclude .DS_Store

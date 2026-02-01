@@ -1,0 +1,75 @@
+version: '3.8'
+
+services:
+  reconmaster:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: reconmaster:latest
+    container_name: reconmaster
+    
+    # Environment variables
+    environment:
+      - PYTHONUNBUFFERED=1
+      - PYTHONDONTWRITEBYTECODE=1
+    
+    # Volumes for results
+    volumes:
+      - ./results:/opt/reconmaster/results
+      - ./wordlists:/opt/reconmaster/wordlists:ro
+    
+    # Default command (can be overridden)
+    # command: ["--help"]
+    
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+        reservations:
+          cpus: '1'
+          memory: 1G
+    
+    # Restart policy
+    restart: "no"
+    
+    # Logging
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    
+    # Interactive mode
+    stdin_open: true
+    tty: true
+    
+    # Network (optional)
+    networks:
+      - reconmaster-network
+
+  # Optional: Nginx reverse proxy for web-based results
+  nginx:
+    image: nginx:latest
+    container_name: reconmaster-nginx
+    ports:
+      - "8080:80"
+    volumes:
+      - ./results:/usr/share/nginx/html:ro
+    depends_on:
+      - reconmaster
+    networks:
+      - reconmaster-network
+    profiles:
+      - with-web
+
+networks:
+  reconmaster-network:
+    driver: bridge
+
+# Usage:
+# docker-compose up                    # Start ReconMaster
+# docker-compose run reconmaster -d example.com  # Run scan
+# docker-compose down                  # Stop and remove
+# COMPOSE_PROFILES=with-web docker-compose up   # With nginx

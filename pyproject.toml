@@ -69,11 +69,11 @@ test = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/yourusername/ReconMaster"
-Documentation = "https://github.com/yourusername/ReconMaster/wiki"
-Repository = "https://github.com/yourusername/ReconMaster.git"
-"Bug Tracker" = "https://github.com/yourusername/ReconMaster/issues"
-Changelog = "https://github.com/yourusername/ReconMaster/blob/main/CHANGELOG.md"
+Homepage = "https://github.com/VIPHACKER100/ReconMaster"
+Documentation = "https://github.com/VIPHACKER100/ReconMaster/wiki"
+Repository = "https://github.com/VIPHACKER100/ReconMaster.git"
+"Bug Tracker" = "https://github.com/VIPHACKER100/ReconMaster/issues"
+Changelog = "https://github.com/VIPHACKER100/ReconMaster/blob/main/CHANGELOG.md"
 
 [project.scripts]
 reconmaster = "reconmaster:main"
@@ -157,3 +157,4 @@ exclude_lines = [
     "if 0:",
     "if False:",
 ]
+

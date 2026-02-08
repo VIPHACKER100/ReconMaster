@@ -1,7 +1,9 @@
 import subprocess
 import os
+import sys
 import glob
 import shlex
+import shutil
 from typing import List, Optional
 
 
@@ -10,42 +12,62 @@ def safe_run(cmd, timeout: Optional[int] = None):
 
     cmd can be a list (preferred) or a string. Returns (stdout, stderr, returncode).
     """
-    # If a string is provided, attempt to split into args and run without a shell.
-    if isinstance(cmd, str):
+    # Add local bin to PATH for the current process
+    local_bin = os.path.join(os.path.dirname(os.path.abspath(__file__)), "bin")
+    env = os.environ.copy()
+    if os.path.exists(local_bin):
+        env["PATH"] = local_bin + os.pathsep + env.get("PATH", "")
+
+    # Resolve full path of the command
+    if isinstance(cmd, list):
+        exe = cmd[0]
+        full_path = shutil.which(exe, path=env["PATH"])
+        if full_path:
+            cmd[0] = full_path
+        cmd_list = [str(c) for c in cmd]
+    else:
+        # String command
         try:
             parts = shlex.split(cmd)
             if parts:
-                proc = subprocess.run(
-                    parts, shell=False, capture_output=True, text=True, timeout=timeout
-                )
-                return proc.stdout, proc.stderr, proc.returncode
-        except subprocess.TimeoutExpired:
-            return "", f"Timeout after {timeout}s", 1
-        except FileNotFoundError as e:
-            return "", str(e), 127
+                exe = parts[0]
+                full_path = shutil.which(exe, path=env["PATH"])
+                if full_path:
+                    parts[0] = full_path
+                cmd_list = parts
+            else:
+                cmd_list = []
         except Exception:
-            # As a last resort (if parsing fails), fall back to shell=True but keep it explicit
-            try:
-                proc = subprocess.run(
-                    cmd, shell=True, capture_output=True, text=True, timeout=timeout
-                )
-                return proc.stdout, proc.stderr, proc.returncode
-            except subprocess.TimeoutExpired:
-                return "", f"Timeout after {timeout}s", 1
-            except FileNotFoundError as e:
-                return "", str(e), 127
+            # Fallback for complex strings
+            return _run_in_shell(cmd, timeout, env)
 
-    # Ensure all parts are strings for list input
-    cmd_list = [str(c) for c in cmd]
     try:
         proc = subprocess.run(
-            cmd_list, shell=False, capture_output=True, text=True, timeout=timeout
+            cmd_list, shell=False, capture_output=True, text=True, timeout=timeout, env=env
         )
         return proc.stdout, proc.stderr, proc.returncode
     except subprocess.TimeoutExpired:
         return "", f"Timeout after {timeout}s", 1
     except FileNotFoundError as e:
-        return "", str(e), 127
+        # Final fallback to shell if which missed something
+        return _run_in_shell(cmd, timeout, env)
+    except Exception as e:
+        return "", str(e), 1
+
+def _run_in_shell(cmd, timeout, env):
+    """Helper for shell=True fallback"""
+    import subprocess
+    if isinstance(cmd, list):
+        cmd = " ".join([f'"{c}"' if " " in c else c for c in cmd])
+    try:
+        proc = subprocess.run(
+            cmd, shell=True, capture_output=True, text=True, timeout=timeout, env=env
+        )
+        return proc.stdout, proc.stderr, proc.returncode
+    except subprocess.TimeoutExpired:
+        return "", f"Timeout after {timeout}s", 1
+    except Exception as e:
+        return "", str(e), 1
 
 
 def merge_and_dedupe_text_files(input_dir: str, pattern: str, output_file: str):

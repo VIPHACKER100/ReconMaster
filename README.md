@@ -72,7 +72,7 @@ I've created a comprehensive reconnaissance framework called **ReconMaster** tha
 ## Usage
 
 ```bash
-git clone https://github.com/viphacker-100/ReconMaster
+git clone https://github.com/viphacker100/ReconMaster
 cd ReconMaster
 python3 reconmaster.py -d target.com -o ./recon_results
 ```

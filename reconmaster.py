@@ -1,9 +1,10 @@
-#!/usr/bin/env python3
 import os
+import sys
 import argparse
 # removed unused imports: subprocess, concurrent.futures
 import json
 import time
+import re
 from datetime import datetime
 from utils import safe_run, merge_and_dedupe_text_files, find_wordlist
 
@@ -32,8 +33,7 @@ class ReconMaster:
         else:
             preferred = [
                 os.path.join(os.getcwd(), "wordlists", "subdomains.txt"),
-                "/usr/share/seclists/Discovery/DNS/deepmagic.com-prefixes-top50000.txt",
-                os.path.join(os.path.expanduser("~"), "wordlists", "subdomains.txt"),
+                os.path.join(os.getcwd(), "wordlists", "dns_common.txt"),
             ]
             found = find_wordlist(preferred)
             self.wordlist = found if found else preferred[0]
@@ -84,28 +84,46 @@ class ReconMaster:
 
         # Amass passive
         amass_output = os.path.join(self.output_dir, "subdomains", "amass.txt")
-        print("[*] Running amass passive...")
+        print("[*] Running amass passive (5m timeout)...")
+        # For Amass 4.x, 'enum -passive' is used.
         stdout, stderr, rc = safe_run(
-            ["amass", "enum", "-passive", "-d", self.target, "-o", amass_output]
+            ["amass", "enum", "-passive", "-d", self.target],
+            timeout=300
         )
-        if rc != 0:
+        if rc == 0 and stdout:
+            with open(amass_output, "w", encoding="utf-8") as f:
+                f.write(stdout)
+        elif rc != 0:
             print(f"[!] amass error: {stderr}")
 
         # Combine results using python helper (cross-platform)
-        all_subdomains = os.path.join(self.output_dir, "subdomains", "all_passive.txt")
+        all_passive_raw = os.path.join(self.output_dir, "subdomains", "all_passive_raw.txt")
         merge_and_dedupe_text_files(
-            os.path.join(self.output_dir, "subdomains"), "*.txt", all_subdomains
+            os.path.join(self.output_dir, "subdomains"), "*.txt", all_passive_raw
         )
 
-        # Load subdomains
+        # Smart extraction: find anything matching subdomains of target
+        print("[*] Extracting and cleaning subdomains...")
+        cleaned_subdomains = set()
+        subdomain_regex = re.compile(rf"([a-z0-9.-]+\.{re.escape(self.target)})", re.IGNORECASE)
+        
         try:
-            with open(all_subdomains, "r", encoding="utf-8") as f:
-                self.subdomains = set([line.strip() for line in f if line.strip()])
-            print(
-                f"[+] Found {len(self.subdomains)} unique subdomains via passive enumeration"
-            )
+            with open(all_passive_raw, "r", encoding="utf-8") as f:
+                for line in f:
+                    matches = subdomain_regex.findall(line)
+                    for match in matches:
+                        cleaned_subdomains.add(match.lower())
         except FileNotFoundError:
-            print("[!] No subdomains found in passive enumeration")
+            pass
+
+        # Save cleaned results
+        all_passive = os.path.join(self.output_dir, "subdomains", "all_passive.txt")
+        with open(all_passive, "w", encoding="utf-8") as f:
+            for sub in sorted(cleaned_subdomains):
+                f.write(sub + "\n")
+
+        self.subdomains.update(cleaned_subdomains)
+        print(f"[+] Found {len(cleaned_subdomains)} unique subdomains via passive enumeration")
 
         return self.subdomains
 
@@ -185,7 +203,7 @@ class ReconMaster:
         # Run httpx (use safe_run wrapper)
         cmd = [
             "httpx",
-            "-l",
+            "-list",
             all_subdomains,
             "-o",
             live_domains_file,
@@ -241,19 +259,19 @@ class ReconMaster:
         print(f"[+] Screenshots saved to {screenshots_dir}")
 
     def scan_for_takeovers(self):
-        """Scan for subdomain takeovers using subzy"""
-        print("\n[+] Scanning for subdomain takeovers with subzy")
+        """Scan for subdomain takeovers using nuclei"""
+        print("\n[+] Scanning for subdomain takeovers with nuclei")
 
         all_subdomains = os.path.join(
             self.output_dir, "subdomains", "all_subdomains.txt"
         )
         takeovers_file = os.path.join(self.output_dir, "subdomains", "takeovers.txt")
 
-        # Run subzy
-        cmd = ["subzy", "run", "--targets", all_subdomains, "--output", takeovers_file]
+        # Run nuclei with takeover templates
+        cmd = ["nuclei", "-l", all_subdomains, "-t", "takeovers", "-o", takeovers_file]
         stdout, stderr, rc = safe_run(cmd)
         if rc != 0:
-            print(f"[!] subzy error: {stderr}")
+            print(f"[!] nuclei error: {stderr}")
 
         # Check results
         try:
@@ -307,8 +325,8 @@ class ReconMaster:
             with open(js_files, "r", encoding="utf-8") as f:
                 for url in [line.strip() for line in f if line.strip()]:
                     cmd = [
-                        "python3",
-                        "/path/to/LinkFinder/linkfinder.py",
+                        sys.executable,
+                        os.path.join(os.getcwd(), "tools", "LinkFinder", "linkfinder.py"),
                         "-i",
                         url,
                         "-o",
@@ -350,7 +368,7 @@ class ReconMaster:
             else list(self.live_domains)
         )
 
-        wordlist = "/usr/share/seclists/Discovery/Web-Content/common.txt"
+        wordlist = os.path.join(os.getcwd(), "wordlists", "directory-list.txt")
         for domain in sample_domains:
             output_file = os.path.join(
                 self.output_dir,
@@ -405,33 +423,9 @@ class ReconMaster:
         print("[+] Parameter finding completed")
 
     def check_broken_links(self):
-        """Check for broken link hijacking opportunities"""
-        print("\n[+] Checking for broken links with socialhunter")
-
-        if not self.live_domains:
-            print(
-                "[!] No live domains for broken link checking. Run resolve_live_domains first."
-            )
-            return
-
-        live_domains_file = os.path.join(
-            self.output_dir, "subdomains", "live_domains.txt"
-        )
-        broken_links_file = os.path.join(self.output_dir, "reports", "broken_links.txt")
-
-        # Run socialhunter
-        cmd = ["socialhunter", "-l", live_domains_file, "-o", broken_links_file]
-        stdout, stderr, rc = safe_run(cmd)
-        if rc != 0:
-            print(f"[!] socialhunter error: {stderr}")
-
-        # Check results
-        try:
-            with open(broken_links_file, "r") as f:
-                self.broken_links = [line.strip() for line in f if line.strip()]
-            print(f"[+] Found {len(self.broken_links)} potential broken links")
-        except FileNotFoundError:
-            print("[+] No broken links found")
+        """Placeholder for broken link checking (socialhunter is deprecated)"""
+        print("\n[+] Skipping broken link check (tool unavailable)")
+        return
 
     def port_scan(self):
         """Scan ports using nmap"""
@@ -449,14 +443,12 @@ class ReconMaster:
             if len(self.live_domains) > 5
             else list(self.live_domains)
         )
-
         for domain in sample_domains:
-            # Extract host from URL
             host = domain.split("://")[1].split("/")[0]
             output_file = os.path.join(self.output_dir, "reports", f"{host}_nmap.txt")
-            print(f"[*] Scanning ports for {host}...")
+            print(f"[*] Scanning ports for {host} (Top 1000)...")
 
-            cmd = ["nmap", "-p-", "-T4", "-sC", "-sV", host, "-o", output_file]
+            cmd = ["nmap", "--top-ports", "1000", "-T4", "-sC", "-sV", host, "-o", output_file]
             stdout, stderr, rc = safe_run(cmd)
             if rc != 0:
                 print(f"[!] nmap error for {host}: {stderr}")
@@ -567,6 +559,7 @@ def main():
         recon.passive_subdomain_enum()
         recon.resolve_live_domains()
         recon.take_screenshots()
+        recon.generate_report()
     else:
         recon.run_all()
 

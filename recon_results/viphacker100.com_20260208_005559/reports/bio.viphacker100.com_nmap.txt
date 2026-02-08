@@ -1,0 +1,88 @@
+# Nmap 7.98 scan initiated Sun Feb  8 01:01:17 2026 as: "C:\\Program Files (x86)\\Nmap\\nmap.EXE" --top-ports 1000 -T4 -sC -sV -o ./recon_results\\viphacker100.com_20260208_005559\\reports\\bio.viphacker100.com_nmap.txt bio.viphacker100.com
+Nmap scan report for bio.viphacker100.com (34.160.37.117)
+Host is up (0.029s latency).
+rDNS record for 34.160.37.117: 117.37.160.34.bc.googleusercontent.com
+Not shown: 998 filtered tcp ports (no-response)
+PORT    STATE SERVICE    VERSION
+80/tcp  open  http
+| fingerprint-strings: 
+|   DNSVersionBindReqTCP: 
+|     HTTP/1.0 400 Bad Request
+|     Content-Length: 54
+|     Content-Type: text/html; charset=UTF-8
+|     Date: Sat, 07 Feb 2026 19:31:49 GMT
+|     <html><title>Error 400 (Bad Request)!!1</title></html>
+|   FourOhFourRequest: 
+|     HTTP/1.0 403 Forbidden
+|     content-type: text/html; charset=UTF-8
+|     Content-Length: 134
+|     via: 1.1 google
+|     date: Sat, 07 Feb 2026 19:31:39 GMT
+|     glb-x-seen-by: +G+VG14k01AWUL6hnhvGbViB5QmpRe2J37zq9nDD6cs=
+|     <!doctype html><meta charset="utf-8"><meta name=viewport content="width=device-width, initial-scale=1"><title>403</title>403 Forbidden
+|   GetRequest, HTTPOptions: 
+|     HTTP/1.0 403 Forbidden
+|     content-type: text/html; charset=UTF-8
+|     Content-Length: 134
+|     via: 1.1 google
+|     date: Sat, 07 Feb 2026 19:31:33 GMT
+|     glb-x-seen-by: +G+VG14k01AWUL6hnhvGbViB5QmpRe2J37zq9nDD6cs=
+|     <!doctype html><meta charset="utf-8"><meta name=viewport content="width=device-width, initial-scale=1"><title>403</title>403 Forbidden
+|   RTSPRequest: 
+|     HTTP/1.0 400 Bad Request
+|     Content-Type: text/html; charset=UTF-8
+|     Referrer-Policy: no-referrer
+|     Content-Length: 273
+|     Date: Sat, 07 Feb 2026 19:31:34 GMT
+|     <html><head>
+|     <meta http-equiv="content-type" content="text/html;charset=utf-8">
+|     <title>400 Bad Request</title>
+|     </head>
+|     <body text=#000000 bgcolor=#ffffff>
+|     <h1>Error: Bad Request</h1>
+|     <h2>Your client has issued a malformed or illegal request.</h2>
+|     <h2></h2>
+|_    </body></html>
+|_http-title: 403
+443/tcp open  ssl/https?
+|_http-title: 403
+| ssl-cert: Subject: commonName=bio.viphacker100.com
+| Subject Alternative Name: DNS:bio.viphacker100.com, DNS:www.bio.viphacker100.com
+| Not valid before: 2026-01-02T05:45:03
+|_Not valid after:  2026-04-02T05:45:02
+1 service unrecognized despite returning data. If you know the service/version, please submit the following fingerprint at https://nmap.org/cgi-bin/submit.cgi?new-service :
+SF-Port80-TCP:V=7.98%I=7%D=2/8%Time=69879316%P=i686-pc-windows-windows%r(G
+SF:etRequest,150,"HTTP/1\.0\x20403\x20Forbidden\r\ncontent-type:\x20text/h
+SF:tml;\x20charset=UTF-8\r\nContent-Length:\x20134\r\nvia:\x201\.1\x20goog
+SF:le\r\ndate:\x20Sat,\x2007\x20Feb\x202026\x2019:31:33\x20GMT\r\nglb-x-se
+SF:en-by:\x20\+G\+VG14k01AWUL6hnhvGbViB5QmpRe2J37zq9nDD6cs=\r\n\r\n<!docty
+SF:pe\x20html><meta\x20charset=\"utf-8\"><meta\x20name=viewport\x20content
+SF:=\"width=device-width,\x20initial-scale=1\"><title>403</title>403\x20Fo
+SF:rbidden")%r(HTTPOptions,150,"HTTP/1\.0\x20403\x20Forbidden\r\ncontent-t
+SF:ype:\x20text/html;\x20charset=UTF-8\r\nContent-Length:\x20134\r\nvia:\x
+SF:201\.1\x20google\r\ndate:\x20Sat,\x2007\x20Feb\x202026\x2019:31:33\x20G
+SF:MT\r\nglb-x-seen-by:\x20\+G\+VG14k01AWUL6hnhvGbViB5QmpRe2J37zq9nDD6cs=\
+SF:r\n\r\n<!doctype\x20html><meta\x20charset=\"utf-8\"><meta\x20name=viewp
+SF:ort\x20content=\"width=device-width,\x20initial-scale=1\"><title>403</t
+SF:itle>403\x20Forbidden")%r(RTSPRequest,1AD,"HTTP/1\.0\x20400\x20Bad\x20R
+SF:equest\r\nContent-Type:\x20text/html;\x20charset=UTF-8\r\nReferrer-Poli
+SF:cy:\x20no-referrer\r\nContent-Length:\x20273\r\nDate:\x20Sat,\x2007\x20
+SF:Feb\x202026\x2019:31:34\x20GMT\r\n\r\n\n<html><head>\n<meta\x20http-equ
+SF:iv=\"content-type\"\x20content=\"text/html;charset=utf-8\">\n<title>400
+SF:\x20Bad\x20Request</title>\n</head>\n<body\x20text=#000000\x20bgcolor=#
+SF:ffffff>\n<h1>Error:\x20Bad\x20Request</h1>\n<h2>Your\x20client\x20has\x
+SF:20issued\x20a\x20malformed\x20or\x20illegal\x20request\.</h2>\n<h2></h2
+SF:>\n</body></html>\n")%r(FourOhFourRequest,150,"HTTP/1\.0\x20403\x20Forb
+SF:idden\r\ncontent-type:\x20text/html;\x20charset=UTF-8\r\nContent-Length
+SF::\x20134\r\nvia:\x201\.1\x20google\r\ndate:\x20Sat,\x2007\x20Feb\x20202
+SF:6\x2019:31:39\x20GMT\r\nglb-x-seen-by:\x20\+G\+VG14k01AWUL6hnhvGbViB5Qm
+SF:pRe2J37zq9nDD6cs=\r\n\r\n<!doctype\x20html><meta\x20charset=\"utf-8\"><
+SF:meta\x20name=viewport\x20content=\"width=device-width,\x20initial-scale
+SF:=1\"><title>403</title>403\x20Forbidden")%r(DNSVersionBindReqTCP,B3,"HT
+SF:TP/1\.0\x20400\x20Bad\x20Request\r\nContent-Length:\x2054\r\nContent-Ty
+SF:pe:\x20text/html;\x20charset=UTF-8\r\nDate:\x20Sat,\x2007\x20Feb\x20202
+SF:6\x2019:31:49\x20GMT\r\n\r\n<html><title>Error\x20400\x20\(Bad\x20Reque
+SF:st\)!!1</title></html>");
+
+Service detection performed. Please report any incorrect results at https://nmap.org/submit/ .
+# Nmap done at Sun Feb  8 01:02:44 2026 -- 1 IP address (1 host up) scanned in 87.29 seconds

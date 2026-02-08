@@ -77,7 +77,7 @@ For those who prefer manual control:
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/viphacker-100/ReconMaster.git
+git clone https://github.com/viphacker100/ReconMaster.git
 cd ReconMaster
 ```
 

@@ -61,8 +61,9 @@ When using ReconMaster, please follow these security best practices:
 
 | Version | Supported | Status |
 |---------|-----------|--------|
-| 1.0.x   | ✅ Yes    | Current |
-| 0.x     | ❌ No     | Deprecated |
+| 3.0.x   | ✅ Yes    | Latest |
+| 2.0.x   | ✅ Yes    | Maintenance |
+| 1.0.x   | ❌ No     | EOL |
 
 ---
 
@@ -94,7 +95,8 @@ ReconMaster supports Python 3.7 and later:
 * 3.8 - Supported
 * 3.9 - Supported
 * 3.10 - Supported
-* 3.11 - Supported (latest)
+* 3.11 - Supported
+* 3.12 - Supported (latest)
 
 ---
 
@@ -198,5 +200,5 @@ This Security Policy follows best practices from:
 
 ---
 
-**Last Updated:** February 1, 2026  
-**Version:** 1.0.0
+**Last Updated:** February 8, 2026  
+**Version:** 3.0.0-Pro

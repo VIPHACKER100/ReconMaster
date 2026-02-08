@@ -80,4 +80,4 @@ If you have questions about this Code of Conduct, please open an issue or contac
 
 ---
 
-**Last Updated:** February 1, 2026
+**Last Updated:** February 8, 2026

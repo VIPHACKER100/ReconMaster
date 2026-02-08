@@ -34,8 +34,8 @@ if requirements_file.exists():
 
 setup(
     name="reconmaster",
-    version="1.0.0",
-    author="ReconMaster Contributors",
+    version="3.0.0-Pro",
+    author="VIPHACKER100",
     author_email="contact@reconmaster.dev",
     description="Automated Reconnaissance Framework for Security Testing",
     long_description=long_description,
@@ -53,7 +53,7 @@ setup(
     py_modules=["reconmaster", "rate_limiter", "utils"],
     
     # Python version requirement
-    python_requires=">=3.7",
+    python_requires=">=3.8",
     
     # Dependencies
     install_requires=install_requires,
@@ -110,6 +110,7 @@ setup(
         "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
         "Programming Language :: Python :: 3.11",
+        "Programming Language :: Python :: 3.12",
         "Topic :: Security",
         "Topic :: System :: Networking",
         "Topic :: System :: Monitoring",

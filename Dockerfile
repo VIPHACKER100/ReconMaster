@@ -5,12 +5,12 @@
 # Run:      docker run -it reconmaster:latest -d example.com
 # Shell:    docker run -it reconmaster:latest bash
 
-FROM python:3.11-slim
+FROM python:3.12-slim
 
 # Set metadata
-LABEL maintainer="ReconMaster Contributors"
-LABEL description="Automated Reconnaissance Framework for Security Testing"
-LABEL version="1.0.0"
+LABEL maintainer="VIPHACKER100"
+LABEL description="Advanced Asynchronous Reconnaissance Framework"
+LABEL version="3.0.0-Pro"
 
 # Set working directory
 WORKDIR /opt/reconmaster
@@ -90,5 +90,5 @@ LABEL org.opencontainers.image.description="Automated Reconnaissance Framework f
 LABEL org.opencontainers.image.url="https://github.com/VIPHACKER100/ReconMaster"
 LABEL org.opencontainers.image.documentation="https://github.com/VIPHACKER100/ReconMaster/wiki"
 LABEL org.opencontainers.image.source="https://github.com/VIPHACKER100/ReconMaster"
-LABEL org.opencontainers.image.version="1.0.0"
+LABEL org.opencontainers.image.version="3.0.0-Pro"
 LABEL org.opencontainers.image.licenses="MIT"

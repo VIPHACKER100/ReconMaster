@@ -37,7 +37,7 @@ pip --version
 pip install reconmaster
 
 # Install specific version
-pip install reconmaster==1.0.0
+pip install reconmaster==3.0.0-Pro
 
 # Install with extras
 pip install reconmaster[dev]     # Development tools
@@ -95,7 +95,7 @@ pip show reconmaster
 
 # Output should show:
 # Name: reconmaster
-# Version: 1.0.0
+# Version: 3.0.0-Pro
 # Location: /path/to/site-packages
 ```
 
@@ -659,5 +659,5 @@ Start using: `pip install reconmaster`
 
 ---
 
-**Last Updated:** February 1, 2026  
-**Version:** 1.0.0
+**Last Updated:** February 8, 2026  
+**Version:** 3.0.0-Pro

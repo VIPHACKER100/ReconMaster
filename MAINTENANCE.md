@@ -383,5 +383,5 @@ For maintainer questions or to volunteer:
 
 ---
 
-**Last Updated:** February 1, 2026  
-**Version:** 1.0.0
+**Last Updated:** February 8, 2026  
+**Version:** 3.0.0-Pro

@@ -4,21 +4,16 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [3.0.0] - 2026-02-01 - ReconMaster v3 (Latest)
+## [3.0.0-Pro] - 2026-02-08 - ReconMaster v3 Asynchronous Rewrite (Current)
 
 ### Added
-- **Vulnerability Scoring System**: ML-powered risk assessment of discovered assets
-- **CVE Integration**: Automatic CVE correlation with detected technologies
-- **Cloud Storage Integration**: Export results to S3, GCS, Azure Blob Storage
-- **Webhook Notifications**: Real-time alerts for critical findings
-- **Custom Plugin System**: Extensible architecture for user-defined modules
-- **API Endpoint**: REST API for programmatic access to scans
-- **Advanced Filtering**: Post-processing filters for finding relevance
-- **Concurrent Execution**: True async/await implementation with asyncio
-- **State Management**: Full scan resumption with checkpoint restoration
-- **Performance Analytics**: Detailed timing and efficiency metrics
-- **Multi-Target Campaigns**: Batch processing of multiple domains
-- **Finding Correlation**: Relationship mapping between assets
+- **Asynchronous Core**: Complete rewrite using `asyncio` for high-performance concurrent reconnaissance.
+- **Nuclei Integration**: Native support for enterprise-grade vulnerability scanning (Critical-Low).
+- **Katana Integration**: Advanced crawling and endpoint discovery module.
+- **Cross-Platform Asynchronicity**: Fixed Windows timeout issues which were previously dependent on SIGALRM.
+- **Professional Reporting**: Integrated executive summaries and JSON-based telemetry.
+- **Improved Tech Detection**: Enhanced tech-stack mapping via optimized httpx logic.
+- **Adaptive Concurrency**: Semaphore-based resource management to prevent network saturation.
 
 ### Changed
 - Refactored core engine for async operations
@@ -222,4 +217,4 @@ For upgrade assistance, see [UPGRADING.md](docs/UPGRADING.md).
 
 **Maintained by**: viphacker100  
 **License**: MIT  
-**Repository**: https://github.com/viphacker100/ReconMaster
+**Repository**: https://github.com/VIPHACKER100/ReconMaster

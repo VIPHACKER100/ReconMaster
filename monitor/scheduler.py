@@ -2,7 +2,7 @@
 """
 ReconMaster Monitoring Scheduler
 Automated reconnaissance scheduling and execution
-Version: 2.0.0
+Version: 3.0.0-Pro
 Author: VIPHACKER100
 """
 
@@ -38,7 +38,7 @@ def print_monitoring_banner():
     """Display monitoring system banner"""
     banner = f"""{Colors.CYAN}{Colors.BOLD}
 ╔═══════════════════════════════════════════════╗
-║  ReconMaster Monitoring System v2.0.0        ║
+║  ReconMaster Monitoring System v3.0.0-Pro    ║
 ║  Continuous Security Reconnaissance          ║
 ╚═══════════════════════════════════════════════╝
 {Colors.ENDC}"""

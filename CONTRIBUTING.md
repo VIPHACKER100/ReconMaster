@@ -135,7 +135,7 @@ How have you tested these changes?
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/viphacker100/ReconMaster.git
+git clone https://github.com/VIPHACKER100/ReconMaster.git
 cd ReconMaster
 ```
 
@@ -171,7 +171,7 @@ python3 reconmaster.py --help
 
 ### Style Guide
 
-- **Python Version**: 3.7+
+- **Python Version**: 3.8+
 - **Style**: PEP 8 compliant
 - **Linting**: flake8
   ```bash

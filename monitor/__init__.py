@@ -3,8 +3,8 @@ ReconMaster Monitor Package
 Automated reconnaissance monitoring and alerting
 """
 
-__version__ = "1.0.0"
-__author__ = "ReconMaster Team"
+__version__ = "3.0.0-Pro"
+__author__ = "VIPHACKER100"
 
 from .scheduler import ReconScheduler
 from .diff_detector import DiffDetector

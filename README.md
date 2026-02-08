@@ -58,7 +58,7 @@
 
 ```powershell
 # Clone the repository
-git clone https://github.com/yourusername/ReconMaster.git
+git clone https://github.com/VIPHACKER100/ReconMaster.git
 cd ReconMaster
 
 # Run setup script (installs Python dependencies and downloads tools)
@@ -402,9 +402,9 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 📞 Contact & Support
 
-- **Issues:** [GitHub Issues](https://github.com/yourusername/ReconMaster/issues)
-- **Discussions:** [GitHub Discussions](https://github.com/yourusername/ReconMaster/discussions)
-- **Twitter:** [@yourusername](https://twitter.com/yourusername)
+- **Issues:** [GitHub Issues](https://github.com/VIPHACKER100/ReconMaster/issues)
+- **Discussions:** [GitHub Discussions](https://github.com/VIPHACKER100/ReconMaster/discussions)
+- **Twitter:** [@VIPHACKER100](https://twitter.com/VIPHACKER100)
 
 ---
 

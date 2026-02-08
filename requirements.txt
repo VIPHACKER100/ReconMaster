@@ -1,13 +1,30 @@
+# ReconMaster v3.1.0-Pro Requirements
+# Professional-Grade Automated Reconnaissance Framework
+
 # Core Dependencies
 aiohttp>=3.9.1
 tqdm>=4.66.1
 requests>=2.31.0
 colorama>=0.4.6
-PyYAML>=6.0.3
-schedule>=1.2.2
+PyYAML>=6.0.1
+schedule>=1.2.1
+asyncio>=3.4.3; python_version < '3.4'
 
-# Testing Dependencies
-pytest>=7.0.0
-pytest-cov>=4.0.0
+# Tool Integration & Infrastructure
+setuptools>=68.0.0
+wheel>=0.40.0
+arjun>=2.2.1
+
+# Optional/Advanced Features
+python-dotenv>=1.0.0
+slack-sdk>=3.20.0
+discord.py>=2.3.0
+
+# Development & Testing
+pytest>=7.4.0
+pytest-asyncio>=0.21.1
+pytest-cov>=4.1.0
 pytest-timeout>=2.1.0
-mock>=4.0.0
+black>=23.7.0
+flake8>=6.1.0
+mypy>=1.5.0

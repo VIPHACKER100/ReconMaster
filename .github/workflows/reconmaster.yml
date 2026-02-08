@@ -26,7 +26,7 @@ jobs:
       - name: Install system dependencies
         run: |
           sudo apt update
-          sudo apt install -y nmap jq Chromium
+          sudo apt install -y nmap jq chromium-browser
 
       - name: Install Recon Tools
         run: |

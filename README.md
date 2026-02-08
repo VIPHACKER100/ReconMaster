@@ -301,7 +301,7 @@ source venv/bin/activate  # On Windows: venv\Scripts\activate
 pip install -r requirements.txt
 
 # Install external tools
-./scripts/install_tools.sh
+./install_reconmaster.sh
 
 # Verify installation
 python reconmaster.py --version

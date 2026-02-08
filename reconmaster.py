@@ -664,9 +664,9 @@ class ReconMaster:
 
         print(f"{Colors.BLUE}[*] Discovering sensitive files...{Colors.ENDC}")
         sensitive_paths = [".env", ".git/config", ".vscode/settings.json", "config.php.bak", "web.config", "robots.txt", "sitemap.xml", ".htaccess"]
-        
         results_file = os.path.join(self.output_dir, "vulns", "sensitive_files.txt")
         
+        # Explicitly configure sessions and connectors
         connector = aiohttp.TCPConnector(ssl=False, limit=10)
         async with aiohttp.ClientSession(timeout=HTTP_TIMEOUT, connector=connector) as session:
             error_count = 0

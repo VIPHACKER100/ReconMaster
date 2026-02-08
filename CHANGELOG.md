@@ -4,7 +4,21 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [3.0.0-Pro] - 2026-02-08 - ReconMaster v3 Asynchronous Rewrite (Current)
+## [3.1.0-Pro] - 2026-02-08 - Elite Intelligence Upgrade (Current)
+
+### Added
+- **AI Threat Profiler**: Heuristic intelligence engine for automated risk analysis and remediation advice.
+- **Regression Recon Engine**: State-aware diffing to identify new subdomains and vulnerabilities across scans.
+- **Elite Reports**: Enhanced Markdown summaries with AI-driven threat profiles and regression alerts.
+- **Premium Branding**: New SVG-based animated logo and high-fidelity project assets.
+- **Windows Power-Up Installer**: Refactored PowerShell script for the full Pro toolset.
+
+### Fixed
+- **CI/CD Stabilization**: Removed legacy LinkFinder submodule/dependencies to resolve GitHub Actions checkout errors.
+- **Async Logic**: Fixed SyntaxError in sensitive file discovery module.
+- **Dependency Map**: Unified `requirements.txt` with infrastructure and optional power-up libraries.
+
+## [3.0.0-Pro] - 2026-02-08 - ReconMaster v3 Asynchronous Rewrite
 
 ### Added
 - **Asynchronous Core**: Complete rewrite using `asyncio` for high-performance concurrent reconnaissance.

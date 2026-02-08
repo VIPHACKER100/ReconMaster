@@ -198,7 +198,7 @@ ReconMaster is a comprehensive reconnaissance automation framework that orchestr
 - ✅ gowitness (Screenshot capture)
 - ✅ katana (Web crawling)
 - ✅ subjs (JS discovery)
-- ✅ LinkFinder (JS analysis)
+- ✅ Native JS Secrets Analysis
 - ✅ Arjun (Parameter discovery)
 - ✅ subzy (Takeover detection)
 - ✅ socialhunter (Broken links)

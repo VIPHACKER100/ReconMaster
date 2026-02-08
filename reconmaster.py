@@ -5,8 +5,9 @@ Author: VIPHACKER100
 License: MIT
 """
 
-__version__ = "3.1.0-Pro"
-VERSION = "3.1.0-Pro"
+__version__ = "3.1.0"
+VERSION = "3.1.0"
+PRO_VERSION = "3.1.0-Pro"
 AUTHOR = "VIPHACKER100"
 GITHUB = "https://github.com/VIPHACKER100/ReconMaster"
 
@@ -59,9 +60,7 @@ class Colors:
     UNDERLINE = '\033[4m'
 
 # Version Info
-VERSION = "3.0.0-Pro"
-AUTHOR = "VIPHACKER100"
-GITHUB = "https://github.com/VIPHACKER100/ReconMaster"
+# Integrated with technical versioning
 
 # Configure Logging
 logging.basicConfig(
@@ -78,7 +77,7 @@ def print_banner():
 ╠╦╝║╣ ║  ║ ║║║║║║║╠═╣╚═╗ ║ ║╣ ╠╦╝
 ╩╚═╚═╝╚═╝╚═╝╝╚╝╩ ╩╩ ╩╚═╝ ╩ ╚═╝╩╚═
 {Colors.ENDC}{Colors.YELLOW}
-    Advanced Asynchronous Reconnaissance Framework v{VERSION}
+    Advanced Asynchronous Reconnaissance Framework v{PRO_VERSION}
     {Colors.CYAN}Author: {Colors.GREEN}{AUTHOR}
     {Colors.CYAN}GitHub: {Colors.BLUE}{GITHUB}
 {Colors.ENDC}

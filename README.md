@@ -6,12 +6,12 @@
   <i>Empowering Bug Bounty Hunters and Security Engineers</i>
 </p>
 
-# 🛰️ ReconMaster v3.1.0-Pro
+# 🛰️ ReconMaster v3.1.0
 
 <p align="center">
   <img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License">
   <img src="https://img.shields.io/badge/Python-3.9+-brightgreen.svg" alt="Python">
-  <img src="https://img.shields.io/badge/Version-3.1.0--Pro-gold.svg" alt="Version">
+  <img src="https://img.shields.io/badge/Version-3.1.0-gold.svg" alt="Version">
   <img src="https://img.shields.io/badge/Status-Production--Ready-success.svg" alt="Status">
 </p>
 
@@ -110,6 +110,14 @@ recon_results/target_timestamp/
 
 ## ⚖️ Legal & Ethical Notice
 This tool is for **legal, authorized security testing only**. The author assumes no liability for misuse or damage caused by this tool. You **must** have explicit permission before scanning any infrastructure.
+
+---
+
+## 📊 Version Tracking
+
+- **Latest Release**: v3.1.0
+- **LTS Release**: v2.0.0 (support until 2027-02-01)
+- **EOL Release**: v1.0.0 (support ended 2025-10-01)
 
 ---
 

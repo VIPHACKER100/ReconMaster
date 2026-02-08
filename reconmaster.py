@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-ReconMaster v3.0.0 - Advanced Asynchronous Reconnaissance Framework
+ReconMaster v3.1.0-Pro - Advanced Asynchronous Reconnaissance Framework
 Author: VIPHACKER100
 License: MIT
 """
@@ -655,6 +655,8 @@ class ReconMaster:
             return "SENSITIVE LEAK: Internal keys exposed. Rotate credentials immediately and check logs for access."
             
         return f"Policy Violation: {name} detected. Review configuration in line with {severity} severity protocols."
+
+    async def discover_sensitive_files(self):
         """Check for sensitive files (config, backup, etc.) with safety guard"""
         if not _HAVE_AIOHTTP:
             logger.warning("aiohttp not available, skipping sensitive file discovery.")

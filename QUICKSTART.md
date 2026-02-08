@@ -79,6 +79,25 @@ python reconmaster.py -d target.com -t 10
 
 ---
 
+### 🕒 Professional Automation Workflow
+Enable **Daily Mode** to monitor for new subdomains and vulnerabilities without the noise of a full active scan:
+
+```bash
+# Set it as a cron job or scheduled task
+python reconmaster.py -d target.com --daily --webhook YOUR_WEBHOOK_URL --i-understand-this-requires-authorization
+```
+
+### 🔌 Using Plugins
+ReconMaster automatically loads plugins from the `plugins/` directory. Current pro plugins:
+- **WordPress Scanner**: Triggered automatically on WP detection.
+- **Cloud Security**: Checks for S3 bucket exposures and cloud misconfigs.
+
+### 🛡️ Hardening & Safety
+- **Circuit Breaker**: The tool will automatically slow down or stop if it detects a WAF (403/429 spikes).
+- **Stealth**: Automatic User-Agent rotation is enabled by default for all scans.
+
+---
+
 ## 🔐 Best Practices v3.0
 
 1. **Authorization**: Use the mandatory `--i-understand-this-requires-authorization` flag to confirm you have permission.

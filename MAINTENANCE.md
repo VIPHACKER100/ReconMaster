@@ -377,9 +377,9 @@ Always explain why issue is closed.
 ## Contact
 
 For maintainer questions or to volunteer:
-- Email: [maintainers@example.com]
-- GitHub: @username
-- Social Media: [handles]
+- Email: [viphacker.100.org@gmail.com]
+- GitHub: @VIPHACKER100
+- Social Media: [@viphacker_100](https://instagram.com/viphacker_100)
 
 ---
 

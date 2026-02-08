@@ -8,17 +8,15 @@ from typing import List, Optional
 
 
 def safe_run(cmd, timeout: Optional[int] = None):
-    """Run a command safely without shell=True when possible.
+    """Run a command safely with robust group-level timeout termination.
 
     cmd can be a list (preferred) or a string. Returns (stdout, stderr, returncode).
     """
-    # Add local bin to PATH for the current process
     local_bin = os.path.join(os.path.dirname(os.path.abspath(__file__)), "bin")
     env = os.environ.copy()
     if os.path.exists(local_bin):
         env["PATH"] = local_bin + os.pathsep + env.get("PATH", "")
 
-    # Resolve full path of the command
     if isinstance(cmd, list):
         exe = cmd[0]
         full_path = shutil.which(exe, path=env["PATH"])
@@ -26,7 +24,6 @@ def safe_run(cmd, timeout: Optional[int] = None):
             cmd[0] = full_path
         cmd_list = [str(c) for c in cmd]
     else:
-        # String command
         try:
             parts = shlex.split(cmd)
             if parts:
@@ -38,34 +35,51 @@ def safe_run(cmd, timeout: Optional[int] = None):
             else:
                 cmd_list = []
         except Exception:
-            # Fallback for complex strings
             return _run_in_shell(cmd, timeout, env)
 
-    try:
-        proc = subprocess.run(
-            cmd_list, shell=False, capture_output=True, text=True, encoding='utf-8', timeout=timeout, env=env
-        )
-        return proc.stdout, proc.stderr, proc.returncode
-    except subprocess.TimeoutExpired:
-        return "", f"Timeout after {timeout}s", 1
-    except FileNotFoundError as e:
-        # Final fallback to shell if which missed something
-        return _run_in_shell(cmd, timeout, env)
-    except Exception as e:
-        return "", str(e), 1
+    return _execute_with_timeout(cmd_list, False, timeout, env)
 
 def _run_in_shell(cmd, timeout, env):
-    """Helper for shell=True fallback"""
-    import subprocess
+    """Helper for shell=True fallback with timeout termination"""
     if isinstance(cmd, list):
         cmd = " ".join([f'"{c}"' if " " in c else c for c in cmd])
+    return _execute_with_timeout(cmd, True, timeout, env)
+
+def _execute_with_timeout(cmd, shell, timeout, env):
+    """Execute a command and ensure it and all children are killed on timeout"""
+    import subprocess
+    import signal
+    import time
+
+    # Start the process with a different session/process group if on Unix
+    kwargs = {
+        "stdout": subprocess.PIPE,
+        "stderr": subprocess.PIPE,
+        "text": True,
+        "encoding": "utf-8",
+        "env": env,
+        "shell": shell
+    }
+    
+    if sys.platform != "win32":
+        kwargs["preexec_fn"] = os.setsid
+
     try:
-        proc = subprocess.run(
-            cmd, shell=True, capture_output=True, text=True, encoding='utf-8', timeout=timeout, env=env
-        )
-        return proc.stdout, proc.stderr, proc.returncode
-    except subprocess.TimeoutExpired:
-        return "", f"Timeout after {timeout}s", 1
+        proc = subprocess.Popen(cmd, **kwargs)
+        try:
+            stdout, stderr = proc.communicate(timeout=timeout)
+            return stdout, stderr, proc.returncode
+        except subprocess.TimeoutExpired:
+            if sys.platform == "win32":
+                # On Windows, taskkill /T /F is more reliable for trees
+                subprocess.run(["taskkill", "/F", "/T", "/PID", str(proc.pid)], 
+                             capture_output=True, check=False)
+            else:
+                # On Unix, kill the entire process group
+                os.killpg(os.getpgid(proc.pid), signal.SIGKILL)
+            
+            stdout, stderr = proc.communicate() # Clean up
+            return stdout, stderr if stderr else f"Timeout after {timeout}s", 1
     except Exception as e:
         return "", str(e), 1
 

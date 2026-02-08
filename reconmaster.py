@@ -21,6 +21,7 @@ import re
 import shutil
 import random
 import concurrent.futures
+import subprocess
 from datetime import datetime
 from typing import List, Set, Dict, Any, Optional
 
@@ -31,6 +32,9 @@ try:
 except ImportError:
     aiohttp = None
     _HAVE_AIOHTTP = False
+
+# Global HTTP Configuration (Lazy initialization recommended for connectors)
+HTTP_TIMEOUT = aiohttp.ClientTimeout(total=20) if _HAVE_AIOHTTP else None
 
 from utils import safe_run, merge_and_dedupe_text_files, find_wordlist
 
@@ -109,6 +113,9 @@ class ReconMaster:
         self.include_list = []
         self.exclude_list = []
         self.resume = False
+        self.daily = False
+        self.dry_run = False
+        self.tool_paths = {}
         
         self.dir_wordlist = os.path.join(base_path, "wordlists", "directory-list.txt")
         self.php_wordlist = os.path.join(base_path, "wordlists", "php_fuzz.txt")
@@ -122,6 +129,11 @@ class ReconMaster:
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/119.0"
         ]
         
+        # Add local bin to PATH for the current process
+        local_bin = os.path.join(base_path, "bin")
+        if os.path.exists(local_bin):
+            os.environ["PATH"] = local_bin + os.pathsep + os.environ.get("PATH", "")
+            
         # Initialize semaphore for concurrency control
         self.semaphore = asyncio.Semaphore(self.threads)
         self.screenshot_semaphore = asyncio.Semaphore(3) # Limit parallel screenshots
@@ -135,18 +147,31 @@ class ReconMaster:
             raise ValueError(f"Invalid domain format: {self.target}. Please provide a valid FQDN.")
 
     def verify_tools(self):
-        """Verify all required tools are in PATH"""
-        required_tools = ["subfinder", "assetfinder", "amass", "ffuf", "httpx", "nuclei", "gowitness", "katana", "arjun", "nmap"]
-        missing = []
-        for tool in required_tools:
-            if not shutil.which(tool):
-                missing.append(tool)
+        """Verify all required tools are resolved to absolute paths"""
+        critical_tools = ["subfinder", "assetfinder", "amass", "ffuf", "httpx", "nuclei", "gowitness", "katana"]
+        optional_tools = ["arjun", "nmap", "dnsx"]
         
-        if missing:
-            logger.error(f"Missing required tools in PATH: {', '.join(missing)}")
-            print(f"{Colors.RED}[!] Error: The following tools are required but not found: {', '.join(missing)}{Colors.ENDC}")
-            print(f"{Colors.YELLOW}[*] Please install them or ensure they are in your system PATH.{Colors.ENDC}")
+        missing_critical = []
+        for tool in critical_tools:
+            path = shutil.which(tool)
+            if not path:
+                missing_critical.append(tool)
+            else:
+                self.tool_paths[tool] = os.path.abspath(path)
+        
+        if missing_critical:
+            logger.error(f"Missing CRITICAL tools in PATH: {', '.join(missing_critical)}")
+            print(f"{Colors.RED}[!] Error: The following critical tools are missing: {', '.join(missing_critical)}{Colors.ENDC}")
+            print(f"{Colors.YELLOW}[*] Please install them or ensure they are in your system PATH/local bin.{Colors.ENDC}")
             sys.exit(1)
+            
+        for tool in optional_tools:
+            path = shutil.which(tool)
+            if not path:
+                logger.warning(f"Optional tool missing: {tool}")
+                print(f"{Colors.YELLOW}[!] Warning: Optional tool '{tool}' not found. Some features will be skipped.{Colors.ENDC}")
+            else:
+                self.tool_paths[tool] = os.path.abspath(path)
 
     def _setup_dirs(self):
         """Create output directory structure"""
@@ -166,18 +191,28 @@ class ReconMaster:
         logger.info(f"Initialized project structure at {self.output_dir}")
 
     async def _run_command(self, cmd: List[str], timeout: int = 300) -> tuple:
-        """Execute command asynchronously with randomized User-Agent for supported tools"""
+        """Execute command asynchronously with robust User-Agent injection policy"""
         ua = random.choice(self.user_agents)
-        
-        # Inject UA into commands if they support common flags
         processed_cmd = list(cmd)
-        tool = processed_cmd[0].lower()
-        if tool in ["httpx", "ffuf", "katana", "nuclei"]:
-            # Check if -H is already there, if not add it
-            header_flag = "-H" if tool != "nuclei" else "-header"
-            has_ua = any("User-Agent" in str(arg) for arg in processed_cmd)
+        tool_name = processed_cmd[0].lower()
+        
+        # Use absolute path if we resolved it earlier
+        if tool_name in self.tool_paths:
+            processed_cmd[0] = self.tool_paths[tool_name]
+
+        # Consistent UA injection policy
+        UA_TOOLS = {"httpx", "ffuf", "katana", "nuclei"}
+        if tool_name in UA_TOOLS:
+            header_flag = "-H"
+            # Prevent duplicate User-Agent injection
+            has_ua = any(isinstance(arg, str) and "user-agent" in arg.lower() for arg in processed_cmd)
             if not has_ua:
                 processed_cmd.extend([header_flag, f"User-Agent: {ua}"])
+
+        logger.debug(f"Executing command: {' '.join(processed_cmd)}")
+        if self.dry_run:
+            print(f"{Colors.YELLOW}[DRY-RUN] Would execute: {' '.join(processed_cmd)}{Colors.ENDC}")
+            return "", "", 0
 
         loop = asyncio.get_running_loop()
         async with self.semaphore:
@@ -187,14 +222,18 @@ class ReconMaster:
             return stdout, stderr, rc
 
     async def _send_notification(self, message: str):
-        """Send notification to Slack/Discord webhook"""
+        """Send notification via Discord/Slack Webhook with safety guard"""
         if not self.webhook_url or not _HAVE_AIOHTTP:
+            if not _HAVE_AIOHTTP and self.webhook_url:
+                logger.warning("aiohttp not available, skipping webhook notification.")
             return
             
         payload = {"content" if "discord.com" in self.webhook_url else "text": f"[ReconMaster] {message}"}
         try:
-            async with aiohttp.ClientSession() as session:
-                async with session.post(self.webhook_url, json=payload, timeout=10) as resp:
+            headers = {"User-Agent": random.choice(self.user_agents)}
+            connector = aiohttp.TCPConnector(ssl=False)
+            async with aiohttp.ClientSession(timeout=HTTP_TIMEOUT, connector=connector, headers=headers) as session:
+                async with session.post(self.webhook_url, json=payload) as resp:
                     if resp.status not in [200, 204]:
                         logger.warning(f"Failed to send webhook notification: {resp.status}")
         except Exception as e:
@@ -272,7 +311,7 @@ class ReconMaster:
             cmd = [
                 "ffuf", "-u", f"http://FUZZ.{self.target}", 
                 "-w", temp_chunk_file, "-of", "json", "-o", ffuf_out + f"_{i}.json", 
-                "-s", "-t", "50", "-rate", "150" # Increased rate but restricted by chunk
+                "-s", "-t", "30", "-rate", "75" # Safer defaults for stability
             ]
             await self._run_command(cmd, timeout=300)
             
@@ -321,8 +360,9 @@ class ReconMaster:
         live_file = os.path.join(self.output_dir, "subdomains", "live_hosts.txt")
         
         # Fast DNS validation
-        if shutil.which("dnsx"):
-            dns_cmd = ["dnsx", "-l", subs_file, "-silent", "-o", live_subs]
+        if "dnsx" in self.tool_paths:
+            print(f"{Colors.BLUE}[*] Resolving {len(self.subdomains)} subdomains with dnsx...{Colors.ENDC}")
+            dns_cmd = [self.tool_paths["dnsx"], "-l", subs_file, "-silent", "-o", live_subs]
             await self._run_command(dns_cmd, timeout=300)
             target_list = live_subs if os.path.exists(live_subs) and os.path.getsize(live_subs) > 0 else subs_file
         else:
@@ -351,32 +391,44 @@ class ReconMaster:
 
         print(f"{Colors.GREEN}[+] Found {len(self.live_domains)} live web hosts.{Colors.ENDC}")
 
-        print(f"{Colors.GREEN}[+] Found {len(self.live_domains)} live web hosts.{Colors.ENDC}")
-
     async def scan_vulnerabilities(self):
         """Run nuclei for vulnerability detection with tech-profiling"""
         if not self.live_domains:
             return
 
-        print(f"{Colors.BLUE}[*] Scanning for vulnerabilities with Nuclei (Profile-aware)...{Colors.ENDC}")
+        print(f"{Colors.BLUE}[*] Scanning for vulnerabilities with Nuclei (Auto-Profiling)...{Colors.ENDC}")
         
         live_file = os.path.join(self.output_dir, "subdomains", "live_hosts.txt")
         vuln_out = os.path.join(self.output_dir, "vulns", "nuclei_results.json")
         
-        # Determine tags based on tech stack
-        tags = ["cve", "exposure", "misconfig"]
+        # Elite Mapping Logic
+        NUCLEI_PROFILE = {
+            "wordpress": ["wordpress", "wp-plugin"],
+            "nginx": ["misconfig", "nginx"],
+            "apache": ["misconfig", "apache"],
+            "aws": ["cloud", "s3"],
+            "azure": ["cloud", "azure"],
+            "gcp": ["cloud", "gcp"],
+            "jenkins": ["ci", "jenkins"],
+            "gitlab": ["ci", "gitlab"],
+            "docker": ["ci", "docker"],
+            "graphql": ["graphql"],
+        }
+        
+        selected_tags = set(["cve", "exposure", "misconfig", "takeover"])
         techs = set()
         for t_list in self.tech_stack.values():
-            techs.update(t.lower() for t in t_list)
-        
-        if any(x in techs for x in ["wordpress", "wp"]): tags.append("wp-plugin")
-        if any(x in techs for x in ["aws", "s3", "azure", "cloud"]): tags.append("cloud")
-        if any(x in techs for x in ["jenkins", "gitlab", "docker"]): tags.append("ci")
+            for t in t_list:
+                t_lower = t.lower()
+                techs.add(t_lower)
+                for profile_name, tags in NUCLEI_PROFILE.items():
+                    if profile_name in t_lower:
+                        selected_tags.update(tags)
         
         cmd = [
             "nuclei", "-l", live_file, "-json", "-o", vuln_out, "-silent", 
-            "-severity", "low,medium,high,critical", "-tags", ",".join(tags),
-            "-rl", "50", "-c", "20" # Rate limiting
+            "-severity", "low,medium,high,critical", "-tags", ",".join(selected_tags),
+            "-rl", "50", "-c", "20"
         ]
         await self._run_command(cmd, timeout=1200)
         
@@ -391,7 +443,12 @@ class ReconMaster:
         
         # Check specifically for takeovers
         takeover_out = os.path.join(self.output_dir, "vulns", "takeovers.txt")
-        cmd_takeover = ["nuclei", "-l", live_file, "-t", "takeovers/", "-o", takeover_out, "-silent"]
+        cmd_takeover = [
+            "nuclei", "-l", live_file, 
+            "-tags", "takeover", 
+            "-o", takeover_out, 
+            "-silent"
+        ]
         await self._run_command(cmd_takeover, timeout=600)
         
         if os.path.exists(takeover_out):
@@ -432,8 +489,6 @@ class ReconMaster:
 
         print(f"{Colors.GREEN}[+] Screenshot capture finished.{Colors.ENDC}")
 
-        print(f"{Colors.GREEN}[+] Screenshot capture finished.{Colors.ENDC}")
-
     async def crawl_and_extract(self):
         """Crawl endpoints and extract sensitive files/JS with deep analysis"""
         if not self.live_domains:
@@ -465,11 +520,18 @@ class ReconMaster:
             await self.analyze_js_files()
 
     async def analyze_js_files(self):
-        """Deeper analysis of JS files for secrets and endpoints"""
-        print(f"{Colors.BLUE}[*] Analyzing {len(self.js_files)} JS files for secrets/endpoints...{Colors.ENDC}")
+        """Deeper parallel analysis of JS files for secrets and endpoints"""
+        if not _HAVE_AIOHTTP:
+            logger.warning("aiohttp not available, skipping JS analysis.")
+            return
+
+        print(f"{Colors.BLUE}[*] Analyzing {len(self.js_files)} JS files for secrets/endpoints (Parallel)...{Colors.ENDC}")
         js_report = os.path.join(self.output_dir, "js", "js_analysis.txt")
         
-        # Regex for common secrets (simplified LinkFinder logic)
+        max_js = 100 if not self.daily else 30
+        if len(self.js_files) > max_js:
+            logger.warning(f"JS analysis truncated to first {max_js} files")
+        
         regex_list = {
             "google_api": r"AIza[0-9A-Za-z-_]{35}",
             "amazon_aws_key": r"AKIA[0-9A-Z]{16}",
@@ -480,56 +542,103 @@ class ReconMaster:
             "endpoint": r"(?:https?://|/)[a-zA-Z0-9.\-_/]+(?:\?[a-zA-Z0-9.\-_=&]+)?"
         }
 
-        async with aiohttp.ClientSession() as session:
-            with open(js_report, "w") as report:
-                for js_url in list(self.js_files)[:50]: # Limit to top 50 for speed
-                    try:
-                        async with session.get(js_url, timeout=15) as resp:
-                            if resp.status == 200:
-                                content = await resp.text()
-                                findings = []
-                                for name, pattern in regex_list.items():
-                                    matches = re.findall(pattern, content)
+        # Optimized aiohttp configuration
+        headers = {"User-Agent": random.choice(self.user_agents)}
+        connector = aiohttp.TCPConnector(ssl=False, limit=self.threads)
+        async with aiohttp.ClientSession(timeout=HTTP_TIMEOUT, connector=connector, headers=headers) as session:
+            error_count = 0
+            async def scan_js(js_url):
+                nonlocal error_count
+                if error_count > 10: return js_url, [] # Circuit breaker
+                try:
+                    async with session.get(js_url, timeout=15) as resp:
+                        if resp.status in [403, 429]:
+                            error_count += 1
+                        if resp.status == 200:
+                            error_count = 0 # Reset on success
+                            content = await resp.text()
+                            findings = []
+                            for name, pattern in regex_list.items():
+                                matches = re.findall(pattern, content)
+                                if matches:
+                                    matches = list(set(matches))
+                                    if name == "endpoint":
+                                        # Fixed precedence bug: (len > 5) AND ('.' OR '/')
+                                        matches = [m for m in matches if len(m) > 5 and ("." in m or "/" in m)]
+                                    
+                                    # Scope check for discovered endpoints
+                                    if name == "endpoint":
+                                        matches = [m for m in matches if self._is_url_in_scope(m)]
+
                                     if matches:
-                                        matches = list(set(matches)) # Dedupe
-                                        if name == "endpoint":
-                                            # Filter out some noise for endpoints
-                                            matches = [m for m in matches if len(m) > 5 and "." in m or "/" in m]
-                                        if matches:
-                                            findings.append(f"  [{name.upper()}] Found {len(matches)} matches")
-                                            for m in matches[:5]: report.write(f"{js_url} -> {name}: {m}\n")
-                                
-                                if findings:
-                                    logger.info(f"JS Finding in {js_url}: {', '.join(findings)}")
-                    except Exception as e:
-                        logger.debug(f"Error analyzing JS {js_url}: {e}")
+                                        findings.append((name, matches))
+                            return js_url, findings
+                except Exception:
+                    return js_url, []
+                return js_url, []
+
+            # Process in parallel with limit
+            js_tasks = [scan_js(url) for url in list(self.js_files)[:max_js]]
+            results = await asyncio.gather(*js_tasks)
+            
+            with open(js_report, "w") as report:
+                for url, findings in results:
+                    for name, matches in findings:
+                        report.write(f"--- {name.upper()} in {url} ---\n")
+                        for m in matches[:10]:
+                            report.write(f"{m}\n")
+                        if findings:
+                            logger.info(f"JS Security Finding in {url}: {len(findings)} categories")
+
+    def _is_url_in_scope(self, url: str) -> bool:
+        """Check if a full URL or path is within target scope"""
+        if url.startswith("/"): return True # Relative paths are always in scope
+        domain = url.replace("https://", "").replace("http://", "").split("/")[0].split(":")[0]
+        return self._is_in_scope(domain)
 
     async def discover_sensitive_files(self):
-        """Active discovery of sensitive files based on detected tech"""
-        if not self.live_domains:
+        """Check for sensitive files (config, backup, etc.) with safety guard"""
+        if not _HAVE_AIOHTTP:
+            logger.warning("aiohttp not available, skipping sensitive file discovery.")
             return
-            
-        print(f"{Colors.BLUE}[*] Checking for sensitive files (.env, .git, etc.)...{Colors.ENDC}")
+
+        print(f"{Colors.BLUE}[*] Discovering sensitive files...{Colors.ENDC}")
         sensitive_paths = [".env", ".git/config", ".vscode/settings.json", "config.php.bak", "web.config", "robots.txt", "sitemap.xml", ".htaccess"]
         
         results_file = os.path.join(self.output_dir, "vulns", "sensitive_files.txt")
         
-        async with aiohttp.ClientSession() as session:
+        connector = aiohttp.TCPConnector(ssl=False, limit=10)
+        async with aiohttp.ClientSession(timeout=HTTP_TIMEOUT, connector=connector) as session:
+            error_count = 0
+            async def check_path(base_url, path):
+                nonlocal error_count
+                if error_count > 15: return None
+                target = f"{base_url.rstrip('/')}/{path}"
+                try:
+                    async with session.get(target, timeout=5, allow_redirects=False) as resp:
+                        if resp.status in [403, 429]:
+                            error_count += 1
+                        if resp.status == 200:
+                            error_count = 0
+                            return target
+                except Exception:
+                    pass
+                return None
+
+            tasks = []
+            for base_url in list(self.live_domains)[:20]:
+                for path in sensitive_paths:
+                    tasks.append(check_path(base_url, path))
+            
+            found = await asyncio.gather(*tasks)
             with open(results_file, "w") as f:
-                for base_url in list(self.live_domains)[:20]: # Limit for speed
-                    for path in sensitive_paths:
-                        target = f"{base_url.rstrip('/')}/{path}"
-                        try:
-                            async with session.get(target, timeout=5, allow_redirects=False) as resp:
-                                if resp.status == 200:
-                                    print(f"{Colors.YELLOW}[!] Found sensitive file: {target}{Colors.ENDC}")
-                                    f.write(f"[200] {target}\n")
-                                    self.vulns.append({
-                                        "info": {"name": "Sensitive File Exposed", "severity": "medium"},
-                                        "matched-at": target
-                                    })
-                        except Exception:
-                            continue
+                for target in filter(None, found):
+                    print(f"{Colors.YELLOW}[!] Sensitive file exposed: {target}{Colors.ENDC}")
+                    f.write(f"[200] {target}\n")
+                    self.vulns.append({
+                        "info": {"name": "Sensitive File Exposed", "severity": "medium"},
+                        "matched-at": target
+                    })
 
     async def find_parameters(self):
         """Passive parameter discovery"""
@@ -578,23 +687,75 @@ class ReconMaster:
         print(f"{Colors.GREEN}[+] Port scan complete.{Colors.ENDC}")
 
     def _calculate_risk_score(self) -> int:
-        """Calculate a basic risk score (0-100)"""
+        """Calculate a weighted risk score (0-100)"""
         score = 0
-        if self.takeovers: score += 40
+        if self.takeovers: score += 50 # High impact
         
-        severity_weights = {
-            "critical": 25,
-            "high": 15,
-            "medium": 5,
-            "low": 1,
-            "info": 0
-        }
-        
+        # Weighted severity system
+        severity_counts = {"critical": 0, "high": 0, "medium": 0, "low": 0}
         for v in self.vulns:
             sev = v.get('info', {}).get('severity', 'info').lower()
-            score += severity_weights.get(sev, 0)
+            if sev in severity_counts:
+                severity_counts[sev] += 1
+        
+        score += severity_counts["critical"] * 30
+        score += severity_counts["high"] * 15
+        score += severity_counts["medium"] * 5
+        score += severity_counts["low"] * 1
+        
+        if severity_counts["medium"] or severity_counts["high"] or severity_counts["critical"]:
+            score += 10 # Base penalty for significant findings
             
         return min(score, 100)
+
+    async def load_and_run_plugins(self):
+        """Dynamic plugin loader and runner"""
+        if self.daily: return # Skip heavy plugins in daily mode
+        
+        print(f"{Colors.BLUE}[*] Loading and running extensions...{Colors.ENDC}")
+        plugins_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "plugins")
+        if not os.path.exists(plugins_dir): return
+        
+        import importlib.util
+        for file in os.listdir(plugins_dir):
+            if file.endswith(".py") and file not in ["__init__.py", "base.py"]:
+                try:
+                    spec = importlib.util.spec_from_file_location(f"plugins.{file[:-3]}", os.path.join(plugins_dir, file))
+                    module = importlib.util.module_from_spec(spec)
+                    spec.loader.exec_module(module)
+                    for obj_name in dir(module):
+                        obj = getattr(module, obj_name)
+                        if isinstance(obj, type) and obj.__name__ != "ReconPlugin" and "ReconPlugin" in [base.__name__ for base in obj.__bases__]:
+                            plugin_instance = obj()
+                            logger.info(f"Executing plugin: {plugin_instance.name}")
+                            await plugin_instance.run(self)
+                except Exception as e:
+                    logger.error(f"Failed to load plugin {file}: {e}")
+
+    def handle_daily_diff(self):
+        """Compare current state with previous run for daily automation"""
+        state_file = os.path.join(os.path.dirname(self.output_dir), f"{self.target}_state.json")
+        current_state = {
+            "subdomains": list(self.subdomains),
+            "vulns": [v.get('info', {}).get('name') for v in self.vulns]
+        }
+        
+        if os.path.exists(state_file):
+            with open(state_file, "r") as f:
+                old_state = json.load(f)
+            
+            new_subs = set(current_state["subdomains"]) - set(old_state.get("subdomains", []))
+            new_vulns = [v for v in self.vulns if v.get('info', {}).get('name') not in old_state.get("vulns", [])]
+            
+            if new_subs or new_vulns:
+                diff_msg = f"🔔 DAILY DIFF for {self.target}:\n"
+                if new_subs: diff_msg += f"- Found {len(new_subs)} NEW subdomains!\n"
+                if new_vulns: diff_msg += f"- Detected {len(new_vulns)} NEW potential vulnerabilities!\n"
+                logger.info(diff_msg)
+                asyncio.run(self._send_notification(diff_msg))
+        
+        with open(state_file, "w") as f:
+            json.dump(current_state, f)
 
     def generate_report(self):
         """Create a professional Markdown summary report"""
@@ -651,7 +812,56 @@ class ReconMaster:
             f.write(f"- Screenshots: `./screenshots/`\n")
             f.write(f"- Endpoints: `./endpoints/all_urls.txt`\n")
             
+        self.export_burp_targets()
+        self.export_burp_issues()
+        self.export_zap_urls()
+        
         print(f"{Colors.GREEN}[+] Report generated successfully at: {report_path}{Colors.ENDC}")
+
+    def export_burp_targets(self):
+        """Export URLs for Burp Suite Site Map import"""
+        out = os.path.join(self.output_dir, "reports", "burp_urls.txt")
+        with open(out, "w") as f:
+            for url in sorted(self.urls):
+                f.write(url + "\n")
+
+    def export_burp_issues(self):
+        """Export findings in a format suitable for Burp Issue Importer (with redaction)"""
+        out = os.path.join(self.output_dir, "reports", "burp_issues.json")
+        def _redact(val):
+            val_str = str(val)
+            return val_str[:4] + "****" if len(val_str) > 8 else val_str
+
+        issues = []
+        for v in self.vulns:
+            name = v.get("info", {}).get("name")
+            matched = v.get("matched-at")
+            issues.append({
+                "name": name,
+                "severity": v.get("info", {}).get("severity"),
+                "confidence": "Firm",
+                "host": matched,
+                "detail": _redact(json.dumps(v, indent=2)) if "key" in str(name).lower() or "secret" in str(name).lower() else json.dumps(v, indent=2)
+            })
+        with open(out, "w") as f:
+            json.dump(issues, f, indent=2)
+
+    def export_zap_urls(self):
+        """Export URLs for OWASP ZAP Import"""
+        out = os.path.join(self.output_dir, "reports", "zap_urls.txt")
+        context_out = os.path.join(self.output_dir, "reports", "zap_context.context")
+        
+        with open(out, "w") as f:
+            for url in self.urls:
+                f.write(url + "\n")
+                
+        # Simple ZAP Context
+        context_xml = f"""<context>
+  <name>ReconMaster_{self.target}</name>
+  <includeRegex>https?://{re.escape(self.target)}/.*</includeRegex>
+</context>"""
+        with open(context_out, "w") as f:
+            f.write(context_xml)
 
 async def run_recon(recon, args):
     """Orchestrate the recon process"""
@@ -669,7 +879,7 @@ async def run_recon(recon, args):
     # Analysis Phase
     await recon.resolve_live_hosts()
     
-    if not args.passive_only:
+    if not args.passive_only and not recon.daily:
         # Full scan phase (can run some tasks concurrently)
         await asyncio.gather(
             recon.scan_vulnerabilities(),
@@ -680,6 +890,11 @@ async def run_recon(recon, args):
         # Sequence dependent tasks
         await recon.find_parameters()
         await recon.port_scan()
+        await recon.load_and_run_plugins()
+    elif recon.daily:
+        # Specialized light-weight automation mode
+        await recon.scan_vulnerabilities()
+        recon.handle_daily_diff()
     else:
         # Minimal analysis for passive-only
         await recon.take_screenshots()
@@ -698,14 +913,17 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter
     )
     parser.add_argument("-d", "--domain", required=True, help="Target domain to scan")
+    parser.add_argument("-v", "--version", action="version", version=f"ReconMaster {VERSION}")
     parser.add_argument("-o", "--output", default="./recon_results", help="Output directory")
     parser.add_argument("-t", "--threads", type=int, default=10, help="Concurrency limit")
     parser.add_argument("-w", "--wordlist", help="Custom wordlist path")
     parser.add_argument("--passive-only", action="store_true", help="Skip active/intrusive scans")
+    parser.add_argument("--dry-run", action="store_true", help="Preview commands without executing them")
     parser.add_argument("--webhook", help="Discord/Slack webhook URL for notifications")
     parser.add_argument("--include", help="Comma-separated list of domains/patterns to include")
     parser.add_argument("--exclude", help="Comma-separated list of domains/patterns to exclude")
     parser.add_argument("--resume", action="store_true", help="Resume from existing artifacts")
+    parser.add_argument("--daily", action="store_true", help="Enable daily automation mode (light recon + diff)")
     parser.add_argument("--i-understand-this-requires-authorization", action="store_true", 
                         dest="authorized", help="Confirm you have permission to scan the target")
 
@@ -730,6 +948,8 @@ def main():
         if args.include: recon.include_list = [x.strip() for x in args.include.split(",")]
         if args.exclude: recon.exclude_list = [x.strip() for x in args.exclude.split(",")]
         recon.resume = args.resume
+        recon.daily = args.daily
+        recon.dry_run = getattr(args, 'dry_run', False)
         recon.webhook_url = args.webhook
         
         asyncio.run(run_recon(recon, args))

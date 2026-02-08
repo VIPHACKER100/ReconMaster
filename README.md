@@ -1,181 +1,116 @@
-# ReconMaster v3.0.0-Pro - Automated Asynchronous Reconnaissance Framework
+<p align="center">
+  <img src="https://raw.githubusercontent.com/VIPHACKER100/ReconMaster/main/assets/logo.png" alt="ReconMaster Logo" width="200">
+  <br>
+  <b>Professional-Grade Asynchronous Reconnaissance Framework</b>
+  <br>
+  <i>Empowering Bug Bounty Hunters and Security Engineers</i>
+</p>
 
-[![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Platform: Windows](https://img.shields.io/badge/platform-Windows-lightgrey.svg)](https://www.microsoft.com/windows)
-[![Version: 3.0.0-Pro](https://img.shields.io/badge/version-3.0.0--Pro-brightgreen.svg)](https://github.com/VIPHACKER100/ReconMaster)
+# 🛰️ ReconMaster v3.1.0-Pro
 
-**ReconMaster v3.0.0-Pro** is a comprehensive, high-performance, and automated reconnaissance framework built for modern security professionals. Completely rewritten with an **asynchronous core**, it orchestrates industry-standard tools into a seamless, high-velocity workflow with integrated vulnerability scanning, change detection, and multi-channel alerting.
+<p align="center">
+  <img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License">
+  <img src="https://img.shields.io/badge/Python-3.9+-brightgreen.svg" alt="Python">
+  <img src="https://img.shields.io/badge/Version-3.1.0--Pro-gold.svg" alt="Version">
+  <img src="https://img.shields.io/badge/Status-Production--Ready-success.svg" alt="Status">
+</p>
 
-![ReconMaster Banner](https://via.placeholder.com/800x200/003366/ffffff?text=ReconMaster+v3.0.0-Pro+High-Performance+Recon)
+```text
+╦═╗╔═╗╔═╗╔═╗╔╗╔╔╦╗╔═╗╔═╗╔╦╗╔═╗╦═╗
+╠╦╝║╣ ║  ║ ║║║║║║║╠═╣╚═╗ ║ ║╣ ╠╦╝
+╩╚═╚═╝╚═╝╚═╝╝╚╝╩ ╩╩ ╩╚═╝ ╩ ╚═╝╩╚═
+```
 
----
-
-## 🚀 Pro Features
-
-### ⚡ Parallel Orchestration (New in v3.0)
-- ✅ **AsyncIO Core**: Simultaneous execution of discovery, crawling, and scanning modules.
-- ✅ **Concurrency Semaphore**: Intelligent resource management to prevent target overloading.
-- ✅ **Optimized Tooling**: Asynchronous wrappers for all core security binaries.
-
-### 🛡️ Intelligent Reconnaissance
-- 🔍 **Multi-Source Subdomain Enumeration**: Integrated `Subfinder`, `Assetfinder`, and `Amass`.
-- 🎯 **Vulnerability Discovery**: Native `Nuclei` integration for Critical-Low severity scanning.
-- 🕷️ **Advanced Crawling**: Deep endpoint extraction and spidering using `Katana`.
-- 🧪 **Parameter & JS Discovery**: Automated `Arjun` and `LinkFinder` workflows for attack surface mapping.
-- 📸 **Gowitness Integration**: Parallel screenshot capture with automated chunking.
-
-### 🔄 Automated Monitoring
-- 🔄 **Scheduled Scans**: Execute scans Hourly, Daily, or Weekly.
-- 🔍 **Change Detection**: Proactive alerts for new subdomains, port changes, and potential takeovers.
-- 📧 **Enterprise Alerting**: Instant notifications via Email, Slack, and Discord (**Native Webhook support**).
-- 📊 **Historical Diffing**: Automated report generation tracking infrastructure evolution.
-
-### 💎 Advanced Pro Features (Exclusive to v3.0-Pro)
-- 📝 **Resume/Checkpoint Mode**: Pick up where you left off after interruptions.
-- 🎯 **Scope Control**: Fine-grained `--include` and `--exclude` filters for complex target lists.
-- 📜 **JS Secrets Analysis**: Automated extraction of API keys, tokens, and endpoints from JS files.
-- 🔒 **Legally Hardened**: Built-in authorization confirmation and domain validation.
-- ⚡ **DNS Validation**: High-speed resolution using `dnsx` pre-validation.
+**ReconMaster** is a high-performance orchestration framework designed for deep, automated discovery and vulnerability assessment. Built for speed and reliability, it seamlessly integrates industry-leading tools into a unified, asynchronous workflow.
 
 ---
 
-## 📋 Table of Contents
+## ⚡ Core Philosophy: Speed & Stealth
 
-- [Installation](#installation)
-- [Quick Start](#quick-start)
-- [Usage](#usage)
-- [Monitoring System](#monitoring-system)
-- [Configuration](#configuration)
-- [Output](#output)
-- [Tools Included](#tools-included)
-- [Examples](#examples)
-- [Contributing](#contributing)
-- [License](#license)
+ReconMaster isn't just a wrapper; it's a dedicated orchestration engine.
+- **AsyncIO Parallelism**: Non-blocking execution of multiple tools simultaneously.
+- **Managed Concurrency**: Global semaphores prevent network saturation and system lockups.
+- **OpSec Hardened**: Randomized User-Agents, circuit breakers for WAF detection, and absolute path verification.
 
 ---
 
-## 🛠️ Installation
+## ✨ Pro Features (v3.0+)
 
-### Quick Install (Windows Recommended)
+### 🔍 Intelligence & Discovery
+- **Multi-Source Subdomain Enumeration**: Integrated `Subfinder`, `Assetfinder`, and `Amass`.
+- **Advanced DNS Validation**: High-speed resolution via `dnsx`.
+- **Tech-Aware Strategy**: Automatic fingerprinting (`httpx`) drives specialized `Nuclei` profiling.
+- **Deep Endpoint Analysis**: Optimized `Katana` crawling + JS Secrets Analysis engine.
 
-```powershell
-# Clone the repository
+### 🛡️ Hardened Operations
+- **Circuit Breaker Logic**: Auto-throttles or stops on WAF/Rate-limit spikes (403/429).
+- **Sub-Process Sanitization**: Forced process-group termination prevents orphaned zombie processes.
+- **Scope Enforcement**: Strict domain and regex filtering across all modules.
+
+### 🔌 Extensibility & Automation
+- **Plugin Architecture**: Easily add custom scanners (WordPress, Cloud, GraphQL examples included).
+- **Daily Automation Mode**: Light-weight monitoring with state diffing and real-time alerts.
+- **CI/CD Integrated**: Native GitHub Actions support for automated daily reconnaissance.
+- **Dockerized Runner**: Fully containerized environment for consistent, isolated scans.
+- **Professional Proxy Exports**: Automated generation of **Burp Suite** Site Maps and **OWASP ZAP** contexts.
+
+---
+
+## 🚀 Installation & Deployment
+
+### Local Setup
+```bash
 git clone https://github.com/VIPHACKER100/ReconMaster.git
-cd ReconMaster
-
-# Run setup script (installs Python dependencies and downloads tools)
-.\setup.ps1
-
-# Download additional tools and wordlists
-.\dl_extra.ps1
-```
-
-### Manual Installation
-
-```powershell
-# Create and activate virtual environment
-python -m venv .venv
-.\.venv\Scripts\Activate.ps1
-
-# Install requirements
 pip install -r requirements.txt
+```
 
-# Download security tools
-.\install_tools_final.ps1
+### Docker (Recommended)
+```bash
+docker build -t reconmaster .
+docker run --rm -v $(pwd)/results:/app/recon_results reconmaster -d target.com --i-understand-this-requires-authorization
+```
+
+### CI/CD Deployment
+Simply copy `.github/workflows/reconmaster.yml` to your repository and configure `RECON_DOMAIN` and `WEBHOOK_URL` in your GitHub Secrets.
+
+---
+
+## 📖 Usage Examples
+
+### Standard Full Assessment
+```bash
+python reconmaster.py -d target.com --i-understand-this-requires-authorization
+```
+
+### Stealth Passive-Only Scan
+```bash
+python reconmaster.py -d target.com --passive-only --i-understand-this-requires-authorization
+```
+
+### Daily Automation (Bug Bounty Mode)
+```bash
+python reconmaster.py -d target.com --daily --webhook https://discord.com/api/webhooks/...
 ```
 
 ---
 
-## 🚀 Quick Start
-
-### Basic Asynchronous Scan
-
-```powershell
-# Run a quick, non-intrusive passive scan
-python reconmaster.py -d example.com --passive-only --i-understand-this-requires-authorization
-
-# Run a comprehensive Pro-level scan (Fastest mode)
-python reconmaster.py -d example.com --i-understand-this-requires-authorization
-
-# Full Pro Features: Webhook + Resume + Scope Control
-python reconmaster.py -d example.com --webhook <URL> --resume --exclude test.example.com --i-understand-this-requires-authorization
+## 📁 Output Structure
+Results are neatly organized by timestamp:
+```text
+recon_results/target_timestamp/
+├── subdomains/    # Discovered hosts & DNS data
+├── vulns/         # Nuclei findings & exposed secrets
+├── endpoints/     # Discovered URLs & JS files
+├── js/            # JS analysis reports
+├── screenshots/   # Visual assessments (Gowitness)
+└── reports/       # Executive Markdown & JSON summaries
 ```
 
 ---
 
-## 📖 Usage
-
-```
-usage: reconmaster.py [-h] -d DOMAIN [-o OUTPUT] [-t THREADS] [-w WORDLIST] 
-                        [--passive-only] [--webhook WEBHOOK] [--include INCLUDE] 
-                        [--exclude EXCLUDE] [--resume] 
-                        --i-understand-this-requires-authorization
-
-ReconMaster v3.0.0-Pro - Advanced Asynchronous Reconnaissance Framework
-
-options:
-  -h, --help            Show this help message and exit
-  -d, --domain DOMAIN   Target domain to scan
-  -o, --output OUTPUT   Output directory (default: ./recon_results)
-  -t, --threads THREADS Concurrency limit (default: 10)
-  -w, --wordlist WORDLIST Custom wordlist for discovery
-  --passive-only        Skip active scans (no brute-forcing/crawling)
-  --webhook WEBHOOK     Discord/Slack webhook URL for notifications
-  --include INCLUDE     CSV of domains/patterns to include
-  --exclude EXCLUDE     CSV of domains/patterns to exclude
-  --resume              Resume from existing artifacts (skips finished phases)
-  --i-understand-this-requires-authorization
-                        Confirm you have permission to scan the target
-```
+## ⚖️ Legal & Ethical Notice
+This tool is for **legal, authorized security testing only**. The author assumes no liability for misuse or damage caused by this tool. You **must** have explicit permission before scanning any infrastructure.
 
 ---
 
-## 📊 Output & Reporting
-
-ReconMaster v3.0-Pro generates a professional artifact structure:
-
-```
-recon_results/
-└── example.com_20260208_130000/
-    ├── subdomains/       # Subfinder, Assetfinder, Amass results
-    ├── vulns/            # Nuclei vulnerability scan results
-    ├── endpoints/        # Katana crawling & JS endpoints
-    ├── screenshots/      # Gowitness captures
-    ├── js/               # Discovered JavaScript files
-    ├── params/           # Arjun parameter discovery results
-    ├── nmap/             # Service scan results
-    └── reports/          # Markdown and JSON summaries
-```
-
----
-
-## 🔧 Tools Included
-
-| Tool | Purpose | Version Status |
-|------|---------|---------|
-| **Subfinder** | Passive enumeration | Included |
-| **Nuclei** | Vulnerability scanning | **Enterprise Integration** |
-| **Katana** | Advanced Crawling | **Pro Addition** |
-| **Amass** | Deep OSINT Discovery | Included |
-| **Gowitness** | Screenshot Capture | Optimized |
-| **Httpx** | Live Host Detection | Included |
-| **FFuF** | Fuzzing | Parallelized |
-| **Arjun** | Parameter Discovery | Included |
-
----
-
-## 📞 Contact & Support
-
-- **Twitter:** [@VIPHACKER100](https://twitter.com/VIPHACKER100)
-- **GitHub:** [VIPHACKER100/ReconMaster](https://github.com/VIPHACKER100/ReconMaster)
-
----
-
-<div align="center">
-
-**⭐ Star this repository if you find it useful!**
-
-Made with ❤️ by **VIPHACKER100** for the security community.
-
-</div>
+**Developed with ❤️ by [VIPHACKER100](https://github.com/VIPHACKER100)**

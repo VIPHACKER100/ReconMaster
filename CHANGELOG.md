@@ -15,12 +15,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - **Improved Tech Detection**: Enhanced tech-stack mapping via optimized httpx logic.
 - **Adaptive Concurrency**: Semaphore-based resource management to prevent network saturation.
 - **Stealth & Evasion**: Integrated **User-Agent Rotation** for all HTTP-based tools.
-- **JS Secrets Engine**: Specialized built-in module for extracting API keys and secrets from JS files.
+- **JS Secrets Engine**: Specialized parallel module for extracting API keys and secrets from JS files.
+- **WAF Awareness**: Implemented **Circuit Breaker** logic to auto-throttle/stop on 403/429 spikes.
+- **Robustness**: Process-group timeout termination to prevent orphaned zombie processes.
+- **Security**: Mandatory absolute path resolution for binaries to mitigate PATH injection risks.
+- **CI/CD Infrastructure**: Native **GitHub Actions** support for scheduled daily recon.
+- **Containerization**: Full **Docker** support with a self-contained environment.
+- **Professional Exports**: Automated **Burp Suite** Site Map and **OWASP ZAP** Context generation.
 - **Discord/Slack Webhooks**: Native real-time alerting system for scan events.
 - **Scope Control**: Implemented `--include` and `--exclude` filters for surgical scanning.
-- **Resume Capability**: Persistent checkpointing to resume scans after failure or interruption.
+- **Resume Capability**: Persistent artifact-based checkpointing for mission-critical scans.
 - **Legal Safeguards**: Mandatory authorization flag and strict FQDN validation.
 - **Fast Resolve**: Integrated `dnsx` pre-validation to accelerate live host discovery.
+- **Optimized Scanning**: Parallelized sensitive file discovery and JS analysis.
 
 ### Changed
 - Refactored core engine for async operations

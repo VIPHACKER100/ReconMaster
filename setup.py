@@ -34,26 +34,26 @@ if requirements_file.exists():
 
 setup(
     name="reconmaster",
-    version="3.0.0-Pro",
+    version="3.1.0-Pro",
     author="VIPHACKER100",
     author_email="contact@reconmaster.dev",
-    description="Automated Reconnaissance Framework for Security Testing",
+    description="Professional-Grade Automated Reconnaissance Framework",
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/VIPHACKER100/ReconMaster",
     project_urls={
         "Bug Tracker": "https://github.com/VIPHACKER100/ReconMaster/issues",
-        "Documentation": "https://github.com/VIPHACKER100/ReconMaster/wiki",
         "Source Code": "https://github.com/VIPHACKER100/ReconMaster",
+        "Security Policy": "https://github.com/VIPHACKER100/ReconMaster/blob/main/SECURITY.md",
     },
     license="MIT",
     
     # Package configuration
-    packages=find_packages(include=["reconmaster", "reconmaster.*"]),
-    py_modules=["reconmaster", "rate_limiter", "utils"],
+    packages=find_packages(),
+    py_modules=["reconmaster", "utils", "rate_limiter"],
     
     # Python version requirement
-    python_requires=">=3.8",
+    python_requires=">=3.9",
     
     # Dependencies
     install_requires=install_requires,
@@ -61,18 +61,11 @@ setup(
     # Testing dependencies
     extras_require={
         "dev": [
-            "pytest>=6.0",
-            "pytest-cov>=2.10",
-            "pytest-timeout>=1.4",
-            "black>=20.8b1",
-            "flake8>=3.8",
-            "mypy>=0.900",
-        ],
-        "test": [
-            "pytest>=6.0",
-            "pytest-cov>=2.10",
-            "pytest-timeout>=1.4",
-            "mock>=4.0",
+            "pytest>=7.0",
+            "pytest-cov>=4.0",
+            "pytest-timeout>=2.1",
+            "black>=23.1",
+            "flake8>=6.0",
         ],
     },
     
@@ -86,35 +79,28 @@ setup(
     # Include additional files
     package_data={
         "": [
-            "LEGAL.md",
-            "CHANGELOG.md",
             "LICENSE",
+            "SECURITY.md",
+            "CHANGELOG.md",
             "wordlists/*.txt",
+            "plugins/*.py",
         ],
     },
     include_package_data=True,
     
     # Classifiers for PyPI
     classifiers=[
-        "Development Status :: 4 - Beta",
+        "Development Status :: 5 - Production/Stable",
         "Environment :: Console",
         "Intended Audience :: Information Technology",
         "Intended Audience :: System Administrators",
-        "Intended Audience :: Developers",
         "License :: OSI Approved :: MIT License",
-        "Natural Language :: English",
         "Operating System :: OS Independent",
-        "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.7",
-        "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
         "Programming Language :: Python :: 3.11",
         "Programming Language :: Python :: 3.12",
         "Topic :: Security",
-        "Topic :: System :: Networking",
-        "Topic :: System :: Monitoring",
-        "Topic :: Utilities",
     ],
     
     # Keywords for searching

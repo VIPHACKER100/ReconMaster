@@ -43,7 +43,7 @@ def safe_run(cmd, timeout: Optional[int] = None):
 
     try:
         proc = subprocess.run(
-            cmd_list, shell=False, capture_output=True, text=True, timeout=timeout, env=env
+            cmd_list, shell=False, capture_output=True, text=True, encoding='utf-8', timeout=timeout, env=env
         )
         return proc.stdout, proc.stderr, proc.returncode
     except subprocess.TimeoutExpired:
@@ -61,7 +61,7 @@ def _run_in_shell(cmd, timeout, env):
         cmd = " ".join([f'"{c}"' if " " in c else c for c in cmd])
     try:
         proc = subprocess.run(
-            cmd, shell=True, capture_output=True, text=True, timeout=timeout, env=env
+            cmd, shell=True, capture_output=True, text=True, encoding='utf-8', timeout=timeout, env=env
         )
         return proc.stdout, proc.stderr, proc.returncode
     except subprocess.TimeoutExpired:

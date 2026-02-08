@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ReconMaster Monitoring Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        header {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            margin-bottom: 30px;
+        }
+        
+        h1 {
+            color: #667eea;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        
+        .subtitle {
+            color: #666;
+            font-size: 1.1em;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .stat-card {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            transition: transform 0.3s ease;
+        }
+        
+        .stat-card:hover {
+            transform: translateY(-5px);
+        }
+        
+        .stat-icon {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        
+        .stat-value {
+            font-size: 2.5em;
+            font-weight: bold;
+            color: #667eea;
+            margin: 10px 0;
+        }
+        
+        .stat-label {
+            color: #666;
+            font-size: 0.9em;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .targets-section {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            margin-bottom: 30px;
+        }
+        
+        .section-title {
+            font-size: 1.8em;
+            color: #667eea;
+            margin-bottom: 20px;
+            border-bottom: 3px solid #667eea;
+            padding-bottom: 10px;
+        }
+        
+        .target-item {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 15px;
+            border-left: 5px solid #667eea;
+        }
+        
+        .target-name {
+            font-size: 1.3em;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 10px;
+        }
+        
+        .target-info {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+        
+        .info-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .info-label {
+            color: #666;
+            font-size: 0.9em;
+        }
+        
+        .info-value {
+            font-weight: bold;
+            color: #333;
+        }
+        
+        .status-badge {
+            display: inline-block;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.85em;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+        
+        .status-ok {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .status-warning {
+            background: #fff3cd;
+            color: #856404;
+        }
+        
+        .status-critical {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        
+        .alerts-section {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        
+        .alert-item {
+            background: #fff;
+            border-left: 5px solid #dc3545;
+            padding: 20px;
+            margin-bottom: 15px;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        
+        .alert-critical {
+            border-left-color: #dc3545;
+        }
+        
+        .alert-high {
+            border-left-color: #fd7e14;
+        }
+        
+        .alert-medium {
+            border-left-color: #ffc107;
+        }
+        
+        .alert-time {
+            color: #999;
+            font-size: 0.85em;
+            margin-bottom: 5px;
+        }
+        
+        .alert-message {
+            color: #333;
+            font-size: 1.1em;
+            margin-bottom: 10px;
+        }
+        
+        .alert-details {
+            color: #666;
+            font-size: 0.9em;
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 5px;
+            margin-top: 10px;
+        }
+        
+        .refresh-btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 25px;
+            font-size: 1em;
+            cursor: pointer;
+            transition: background 0.3s ease;
+            margin-top: 20px;
+        }
+        
+        .refresh-btn:hover {
+            background: #764ba2;
+        }
+        
+        .last-update {
+            text-align: center;
+            color: rgba(255,255,255,0.9);
+            margin-top: 20px;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🔍 ReconMaster Monitoring Dashboard</h1>
+            <p class="subtitle">Real-time reconnaissance monitoring and security alerts</p>
+        </header>
+        
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-icon">🎯</div>
+                <div class="stat-value" id="total-targets">-</div>
+                <div class="stat-label">Active Targets</div>
+            </div>
+            
+            <div class="stat-card">
+                <div class="stat-icon">🌐</div>
+                <div class="stat-value" id="total-subdomains">-</div>
+                <div class="stat-label">Total Subdomains</div>
+            </div>
+            
+            <div class="stat-card">
+                <div class="stat-icon">🚨</div>
+                <div class="stat-value" id="critical-alerts">-</div>
+                <div class="stat-label">Critical Alerts</div>
+            </div>
+            
+            <div class="stat-card">
+                <div class="stat-icon">📊</div>
+                <div class="stat-value" id="total-scans">-</div>
+                <div class="stat-label">Total Scans</div>
+            </div>
+        </div>
+        
+        <div class="targets-section">
+            <h2 class="section-title">Monitored Targets</h2>
+            <div id="targets-list">
+                <!-- Targets will be loaded here -->
+                <div class="target-item">
+                    <div class="target-name">viphacker100.com</div>
+                    <span class="status-badge status-warning">2 Takeover Risks</span>
+                    <div class="target-info">
+                        <div class="info-item">
+                            <span class="info-label">Subdomains:</span>
+                            <span class="info-value">5</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Last Scan:</span>
+                            <span class="info-value">Today 11:36 AM</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Next Scan:</span>
+                            <span class="info-value">Tomorrow 02:00 AM</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Status:</span>
+                            <span class="info-value">✅ Monitoring</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="alerts-section">
+            <h2 class="section-title">Recent Alerts</h2>
+            <div id="alerts-list">
+                <!-- Alerts will be loaded here -->
+                <div class="alert-item alert-critical">
+                    <div class="alert-time">2026-02-08 11:36:00</div>
+                    <div class="alert-message">
+                        🚨 <strong>CRITICAL:</strong> Subdomain takeover vulnerability detected on viphacker100.com
+                    </div>
+                    <div class="alert-details">
+                        <strong>Affected subdomains:</strong><br>
+                        • bio.viphacker100.com → cdn1.wixdns.net<br>
+                        • www.bio.viphacker100.com → cdn1.wixdns.net
+                    </div>
+                </div>
+                
+                <div class="alert-item alert-medium">
+                    <div class="alert-time">2026-02-08 11:36:00</div>
+                    <div class="alert-message">
+                        📊 <strong>INFO:</strong> Baseline scan completed for viphacker100.com
+                    </div>
+                    <div class="alert-details">
+                        5 subdomains discovered, 5 live domains confirmed
+                    </div>
+                </div>
+            </div>
+            
+            <button class="refresh-btn" onclick="refreshDashboard()">🔄 Refresh Dashboard</button>
+        </div>
+        
+        <div class="last-update">
+            Last updated: <span id="last-update-time">-</span>
+        </div>
+    </div>
+    
+    <script>
+        function updateTime() {
+            const now = new Date();
+            document.getElementById('last-update-time').textContent = now.toLocaleString();
+        }
+        
+        function refreshDashboard() {
+            // In a real implementation, this would fetch data from the monitoring system
+            alert('Dashboard refresh functionality - would load latest scan data');
+            updateTime();
+        }
+        
+        // Initialize
+        updateTime();
+        
+        // Update stats (placeholder values)
+        document.getElementById('total-targets').textContent = '1';
+        document.getElementById('total-subdomains').textContent = '5';
+        document.getElementById('critical-alerts').textContent = '2';
+        document.getElementById('total-scans').textContent = '3';
+        
+        // Auto-refresh every 5 minutes
+        setInterval(updateTime, 60000);
+    </script>
+</body>
+</html>

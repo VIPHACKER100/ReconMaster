@@ -1,12 +1,60 @@
+#!/usr/bin/env python3
+"""
+ReconMaster - Automated Reconnaissance Framework
+Version: 2.0.0
+Author: VIPHACKER100
+GitHub: https://github.com/VIPHACKER100/ReconMaster
+"""
+
 import os
 import sys
 import argparse
-# removed unused imports: subprocess, concurrent.futures
 import json
 import time
 import re
 from datetime import datetime
 from utils import safe_run, merge_and_dedupe_text_files, find_wordlist
+
+# Fix encoding for Windows consoles
+if sys.platform == "win32":
+    import io
+    if hasattr(sys.stdout, 'reconfigure'):
+        sys.stdout.reconfigure(encoding='utf-8')
+    else:
+        # Fallback for older versions
+        sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+
+# ANSI Color Codes
+class Colors:
+    HEADER = '\033[95m'
+    BLUE = '\033[94m'
+    CYAN = '\033[96m'
+    GREEN = '\033[92m'
+    YELLOW = '\033[93m'
+    RED = '\033[91m'
+    ENDC = '\033[0m'
+    BOLD = '\033[1m'
+    UNDERLINE = '\033[4m'
+
+# Version Info
+VERSION = "2.0.0"
+AUTHOR = "VIPHACKER100"
+GITHUB = "https://github.com/VIPHACKER100/ReconMaster"
+
+def print_banner():
+    """Display ReconMaster ASCII banner"""
+    banner = f"""{Colors.CYAN}{Colors.BOLD}
+╦═╗╔═╗╔═╗╔═╗╔╗╔╔╦╗╔═╗╔═╗╔╦╗╔═╗╦═╗
+╠╦╝║╣ ║  ║ ║║║║║║║╠═╣╚═╗ ║ ║╣ ╠╦╝
+╩╚═╚═╝╚═╝╚═╝╝╚╝╩ ╩╩ ╩╚═╝ ╩ ╚═╝╩╚═
+{Colors.ENDC}{Colors.YELLOW}
+    Automated Reconnaissance Framework v{VERSION}
+    {Colors.CYAN}Author: {Colors.GREEN}{AUTHOR}
+    {Colors.CYAN}GitHub: {Colors.BLUE}{GITHUB}
+{Colors.ENDC}
+{Colors.RED}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━{Colors.ENDC}
+    """
+    print(banner)
 
 
 class ReconMaster:
@@ -56,7 +104,7 @@ class ReconMaster:
         for dir_path in dirs:
             os.makedirs(dir_path, exist_ok=True)
 
-        print(f"[+] Created output directory structure at {self.output_dir}")
+        print(f"{Colors.GREEN}[+]{Colors.ENDC} Created output directory structure at {Colors.CYAN}{self.output_dir}{Colors.ENDC}")
 
     def passive_subdomain_enum(self):
         """Perform passive subdomain enumeration"""
@@ -242,13 +290,14 @@ class ReconMaster:
         )
         screenshots_dir = os.path.join(self.output_dir, "screenshots")
 
-        # Run gowitness
+        # Run gowitness v3
         cmd = [
             "gowitness",
+            "scan",
             "file",
-            "-f",
+            "--file",
             live_domains_file,
-            "-P",
+            "-s",
             screenshots_dir,
             "--no-http",
         ]
@@ -527,8 +576,23 @@ class ReconMaster:
 
 
 def main():
+    # Display banner
+    print_banner()
+    
     parser = argparse.ArgumentParser(
-        description="ReconMaster: Automated Reconnaissance Framework"
+        description=f"{Colors.BOLD}ReconMaster{Colors.ENDC}: Automated Reconnaissance Framework v{VERSION}",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog=f"""
+{Colors.CYAN}Examples:{Colors.ENDC}
+  {Colors.GREEN}Passive scan:{Colors.ENDC}     python reconmaster.py -d example.com --passive-only
+  {Colors.GREEN}Full scan:{Colors.ENDC}        python reconmaster.py -d example.com
+  {Colors.GREEN}Custom output:{Colors.ENDC}    python reconmaster.py -d example.com -o ./scans -t 20
+
+{Colors.YELLOW}For monitoring:{Colors.ENDC}   python monitor/scheduler.py -t example.com
+
+{Colors.CYAN}Documentation:{Colors.ENDC} README.md | MONITORING.md | QUICKSTART.md
+{Colors.BLUE}GitHub:{Colors.ENDC} {GITHUB}
+        """
     )
     parser.add_argument("-d", "--domain", required=True, help="Target domain to scan")
     parser.add_argument(

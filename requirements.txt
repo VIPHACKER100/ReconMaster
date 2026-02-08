@@ -1,3 +1,5 @@
-aiohttp
-tqdm
-requests
+schedule==1.2.2
+PyYAML==6.0.3
+aiohttp==3.9.1
+tqdm==4.66.1
+requests==2.31.0

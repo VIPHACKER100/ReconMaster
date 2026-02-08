@@ -1,0 +1,66 @@
+# ReconMaster Monitoring Configuration
+
+# Targets to monitor
+targets:
+  - viphacker100.com
+  # Add more targets here
+
+# Scan schedules
+schedules:
+  # Hourly scans (for critical targets)
+  hourly: []
+  
+  # Daily scans (recommended for most targets)
+  daily:
+    - viphacker100.com
+  
+  # Weekly scans (for less critical targets)
+  weekly: []
+
+# Scan options
+scan_options:
+  # Use passive-only mode (faster, less intrusive)
+  passive_only: false
+  
+  # Number of threads for scanning
+  threads: 10
+
+# Alerting configuration
+alerting:
+  # Enable/disable all alerts
+  enabled: true
+  
+  # Email alerts
+  email:
+    enabled: false
+    smtp_server: smtp.gmail.com
+    smtp_port: 587
+    sender_email: your-email@gmail.com
+    sender_password: your-app-password
+    recipient_emails:
+      - security@example.com
+      - admin@example.com
+  
+  # Slack alerts
+  slack:
+    enabled: false
+    webhook_url: https://hooks.slack.com/services/YOUR/WEBHOOK/URL
+  
+  # Discord alerts
+  discord:
+    enabled: false
+    webhook_url: https://discord.com/api/webhooks/YOUR/WEBHOOK/URL
+
+# Monitoring settings - what changes to detect
+monitoring:
+  # Detect new subdomains
+  detect_new_subdomains: true
+  
+  # Detect subdomain takeover vulnerabilities
+  detect_takeovers: true
+  
+  # Detect changes in open ports
+  detect_port_changes: true
+  
+  # Detect SSL certificate changes
+  detect_ssl_changes: true

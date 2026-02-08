@@ -28,8 +28,15 @@
 ### 🔄 Automated Monitoring
 - 🔄 **Scheduled Scans**: Execute scans Hourly, Daily, or Weekly.
 - 🔍 **Change Detection**: Proactive alerts for new subdomains, port changes, and potential takeovers.
-- 📧 **Enterprise Alerting**: Instant notifications via Email, Slack, and Discord.
+- 📧 **Enterprise Alerting**: Instant notifications via Email, Slack, and Discord (**Native Webhook support**).
 - 📊 **Historical Diffing**: Automated report generation tracking infrastructure evolution.
+
+### 💎 Advanced Pro Features (Exclusive to v3.0-Pro)
+- 📝 **Resume/Checkpoint Mode**: Pick up where you left off after interruptions.
+- 🎯 **Scope Control**: Fine-grained `--include` and `--exclude` filters for complex target lists.
+- 📜 **JS Secrets Analysis**: Automated extraction of API keys, tokens, and endpoints from JS files.
+- 🔒 **Legally Hardened**: Built-in authorization confirmation and domain validation.
+- ⚡ **DNS Validation**: High-speed resolution using `dnsx` pre-validation.
 
 ---
 
@@ -86,13 +93,13 @@ pip install -r requirements.txt
 
 ```powershell
 # Run a quick, non-intrusive passive scan
-python reconmaster.py -d example.com --passive-only
+python reconmaster.py -d example.com --passive-only --i-understand-this-requires-authorization
 
 # Run a comprehensive Pro-level scan (Fastest mode)
-python reconmaster.py -d example.com
+python reconmaster.py -d example.com --i-understand-this-requires-authorization
 
-# Custom concurrency (threads)
-python reconmaster.py -d example.com -t 30
+# Full Pro Features: Webhook + Resume + Scope Control
+python reconmaster.py -d example.com --webhook <URL> --resume --exclude test.example.com --i-understand-this-requires-authorization
 ```
 
 ---
@@ -100,7 +107,10 @@ python reconmaster.py -d example.com -t 30
 ## 📖 Usage
 
 ```
-usage: reconmaster.py [-h] -d DOMAIN [-o OUTPUT] [-t THREADS] [-w WORDLIST] [--passive-only]
+usage: reconmaster.py [-h] -d DOMAIN [-o OUTPUT] [-t THREADS] [-w WORDLIST] 
+                        [--passive-only] [--webhook WEBHOOK] [--include INCLUDE] 
+                        [--exclude EXCLUDE] [--resume] 
+                        --i-understand-this-requires-authorization
 
 ReconMaster v3.0.0-Pro - Advanced Asynchronous Reconnaissance Framework
 
@@ -111,6 +121,12 @@ options:
   -t, --threads THREADS Concurrency limit (default: 10)
   -w, --wordlist WORDLIST Custom wordlist for discovery
   --passive-only        Skip active scans (no brute-forcing/crawling)
+  --webhook WEBHOOK     Discord/Slack webhook URL for notifications
+  --include INCLUDE     CSV of domains/patterns to include
+  --exclude EXCLUDE     CSV of domains/patterns to exclude
+  --resume              Resume from existing artifacts (skips finished phases)
+  --i-understand-this-requires-authorization
+                        Confirm you have permission to scan the target
 ```
 
 ---

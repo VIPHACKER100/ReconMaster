@@ -14,6 +14,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - **Professional Reporting**: Integrated executive summaries and JSON-based telemetry.
 - **Improved Tech Detection**: Enhanced tech-stack mapping via optimized httpx logic.
 - **Adaptive Concurrency**: Semaphore-based resource management to prevent network saturation.
+- **Stealth & Evasion**: Integrated **User-Agent Rotation** for all HTTP-based tools.
+- **JS Secrets Engine**: Specialized built-in module for extracting API keys and secrets from JS files.
+- **Discord/Slack Webhooks**: Native real-time alerting system for scan events.
+- **Scope Control**: Implemented `--include` and `--exclude` filters for surgical scanning.
+- **Resume Capability**: Persistent checkpointing to resume scans after failure or interruption.
+- **Legal Safeguards**: Mandatory authorization flag and strict FQDN validation.
+- **Fast Resolve**: Integrated `dnsx` pre-validation to accelerate live host discovery.
 
 ### Changed
 - Refactored core engine for async operations

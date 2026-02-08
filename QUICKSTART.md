@@ -7,13 +7,13 @@ The new asynchronous engine allows for significantly higher thread counts and fa
 
 ```powershell
 # 1. Passive scan (Stealthy, Instant)
-python reconmaster.py -d target.com --passive-only
+python reconmaster.py -d target.com --passive-only --i-understand-this-requires-authorization
 
-# 2. Comprehensive Pro Scan (Nuclei + Katana + Brute-force)
-python reconmaster.py -d target.com
+# 2. Comprehensive Pro Scan (Nuclei + Katana + JS Analysis)
+python reconmaster.py -d target.com --i-understand-this-requires-authorization
 
-# 3. High-Concurrency Assessment (Best for large scopes)
-python reconmaster.py -d target.com -t 50 -o ./v3_results
+# 3. Pro Workflow: Webhook + Resume + Exclusions
+python reconmaster.py -d target.com --webhook <WEBHOOK_URL> --resume --exclude staging.target.com --i-understand-this-requires-authorization
 ```
 
 ### 🔄 Automated Monitoring
@@ -45,7 +45,7 @@ python monitor/scheduler.py --daemon
 ### Workflow 1: Rapid Asset Discovery
 ```powershell
 # 1. Discovery phase
-python reconmaster.py -d client.com --passive-only
+python reconmaster.py -d client.com --passive-only --i-understand-this-requires-authorization
 
 # 2. Inspect live hosts instantly
 cat recon_results/client.com_*/subdomains/live_hosts.txt
@@ -54,7 +54,7 @@ cat recon_results/client.com_*/subdomains/live_hosts.txt
 ### Workflow 2: Full Vulnerability Assessment
 ```powershell
 # 1. Run full Pro scan
-python reconmaster.py -d target.com
+python reconmaster.py -d target.com --i-understand-this-requires-authorization
 
 # 2. View highest severity findings
 grep -E "critical|high" recon_results/target.com_*/vulns/nuclei_results.json
@@ -81,8 +81,9 @@ python reconmaster.py -d target.com -t 10
 
 ## 🔐 Best Practices v3.0
 
-1. **Scan Scope**: Always verify the `-d` (domain) matches your authorized target.
-2. **Resource Load**: The Pro version is intensive; monitor your local CPU/Memory during large `-t 50+` scans.
+1. **Authorization**: Use the mandatory `--i-understand-this-requires-authorization` flag to confirm you have permission.
+2. **Scan Scope**: Always verify the `-d` (domain) matches your authorized target; use `--exclude` to avoid sensitive infra.
+3. **Resource Load**: The Pro version is intensive; monitor your local CPU/Memory during large `-t 50+` scans.
 3. **Report Integrity**: Use the generated `recon_data.json` for automated parsing into your own dashboards.
 
 ---

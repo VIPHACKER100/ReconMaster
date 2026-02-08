@@ -181,20 +181,75 @@ class ReconMaster:
 
     def _setup_dirs(self):
         """Create output directory structure"""
+        # Complete hierarchical structure as per README specification
         dirs = [
+            # Root directory
             self.output_dir,
+            
+            # Subdomain enumeration results
             os.path.join(self.output_dir, "subdomains"),
-            os.path.join(self.output_dir, "screenshots"),
-            os.path.join(self.output_dir, "endpoints"),
-            os.path.join(self.output_dir, "js"),
-            os.path.join(self.output_dir, "params"),
+            
+            # HTTP probing results
+            os.path.join(self.output_dir, "http"),
+            
+            # Vulnerability scan results
             os.path.join(self.output_dir, "vulns"),
+            
+            # Endpoint discovery results
+            os.path.join(self.output_dir, "endpoints"),
+            
+            # JavaScript analysis results
+            os.path.join(self.output_dir, "js"),
+            os.path.join(self.output_dir, "js", "analysis"),
+            
+            # Screenshots
+            os.path.join(self.output_dir, "screenshots"),
+            
+            # Export formats
+            os.path.join(self.output_dir, "exports"),
+            
+            # Logs
+            os.path.join(self.output_dir, "logs"),
+            
+            # Legacy directories (for backward compatibility)
+            os.path.join(self.output_dir, "params"),
             os.path.join(self.output_dir, "reports"),
             os.path.join(self.output_dir, "nmap")
         ]
+        
         for d in dirs:
             os.makedirs(d, exist_ok=True)
-        logger.info(f"Initialized project structure at {self.output_dir}")
+        
+        # Initialize file logging after directories are ready
+        self._setup_logging()
+        
+        logger.info(f"Initialized hierarchical project structure at {self.output_dir}")
+        logger.debug(f"Created {len(dirs)} directories for organized output")
+
+    def _setup_logging(self):
+        """Configure file handlers for logging into logs/ directory"""
+        log_dir = os.path.join(self.output_dir, "logs")
+        
+        # Scan log (INFO level)
+        scan_log = os.path.join(log_dir, "scan.log")
+        file_handler = logging.FileHandler(scan_log)
+        file_handler.setLevel(logging.INFO)
+        file_handler.setFormatter(logging.Formatter('%(asctime)s [%(levelname)s] %(message)s'))
+        logger.addHandler(file_handler)
+        
+        # Errors log (ERROR level)
+        error_log = os.path.join(log_dir, "errors.log")
+        error_handler = logging.FileHandler(error_log)
+        error_handler.setLevel(logging.ERROR)
+        error_handler.setFormatter(logging.Formatter('%(asctime)s [%(levelname)s] %(message)s'))
+        logger.addHandler(error_handler)
+        
+        # Debug log (DEBUG level)
+        debug_log = os.path.join(log_dir, "debug.log")
+        debug_handler = logging.FileHandler(debug_log)
+        debug_handler.setLevel(logging.DEBUG)
+        debug_handler.setFormatter(logging.Formatter('%(asctime)s [%(levelname)s] %(message)s'))
+        logger.addHandler(debug_handler)
 
     async def _run_command(self, cmd: List[str], timeout: int = 300) -> tuple:
         """Execute command asynchronously with robust User-Agent injection policy"""
@@ -362,42 +417,45 @@ class ReconMaster:
         print(f"{Colors.BLUE}[*] Validating subdomains with dnsx and detecting tech stacks...{Colors.ENDC}")
         
         subs_file = os.path.join(self.output_dir, "subdomains", "all_subdomains.txt")
-        live_subs = os.path.join(self.output_dir, "subdomains", "dnsx_live.txt")
-        live_file = os.path.join(self.output_dir, "subdomains", "live_hosts.txt")
+        dnsx_live = os.path.join(self.output_dir, "subdomains", "live_subdomains.txt")
+        httpx_json = os.path.join(self.output_dir, "http", "httpx_full.json")
+        alive_txt = os.path.join(self.output_dir, "http", "alive.txt")
         
         # Fast DNS validation
         if "dnsx" in self.tool_paths:
             print(f"{Colors.BLUE}[*] Resolving {len(self.subdomains)} subdomains with dnsx...{Colors.ENDC}")
-            dns_cmd = [self.tool_paths["dnsx"], "-l", subs_file, "-silent", "-o", live_subs]
+            dns_cmd = [self.tool_paths["dnsx"], "-l", subs_file, "-silent", "-o", dnsx_live]
             if os.path.exists(self.resolvers):
                 dns_cmd.extend(["-r", self.resolvers])
             await self._run_command(dns_cmd, timeout=300)
-            target_list = live_subs if os.path.exists(live_subs) and os.path.getsize(live_subs) > 0 else subs_file
+            target_list = dnsx_live if os.path.exists(dnsx_live) and os.path.getsize(dnsx_live) > 0 else subs_file
         else:
             target_list = subs_file
 
+        print(f"{Colors.BLUE}[*] Probing for live HTTP services with httpx...{Colors.ENDC}")
         cmd = [
-            "httpx", "-l", target_list, "-o", live_file, 
+            "httpx", "-l", target_list, "-o", httpx_json, 
             "-json", "-status-code", "-title", "-tech-detect", "-follow-redirects", 
             "-silent", "-threads", str(self.threads)
         ]
         
         await self._run_command(cmd, timeout=600)
         
-        if os.path.exists(live_file):
-            with open(live_file, "r") as f:
-                for line in f:
+        if os.path.exists(httpx_json):
+            with open(httpx_json, "r") as f_in, open(alive_txt, "w") as f_alive:
+                for line in f_in:
                     if not line.strip(): continue
                     try:
                         entry = json.loads(line)
                         url = entry.get("url")
                         if url:
+                            f_alive.write(f"{url}\n")
                             self.live_domains.add(url)
                             self.tech_stack[url] = entry.get("tech", [])
                     except json.JSONDecodeError:
                         logger.warning(f"Failed to parse httpx JSON line: {line.strip()}")
 
-        print(f"{Colors.GREEN}[+] Found {len(self.live_domains)} live web hosts.{Colors.ENDC}")
+        print(f"{Colors.GREEN}[+] Found {len(self.live_domains)} live web hosts. Results: http/alive.txt{Colors.ENDC}")
 
     async def scan_vulnerabilities(self):
         """Run nuclei for vulnerability detection with tech-profiling"""
@@ -406,7 +464,7 @@ class ReconMaster:
 
         print(f"{Colors.BLUE}[*] Scanning for vulnerabilities with Nuclei (Auto-Profiling)...{Colors.ENDC}")
         
-        live_file = os.path.join(self.output_dir, "subdomains", "live_hosts.txt")
+        alive_file = os.path.join(self.output_dir, "http", "alive.txt")
         vuln_out = os.path.join(self.output_dir, "vulns", "nuclei_results.json")
         
         # Elite Mapping Logic
@@ -434,25 +492,44 @@ class ReconMaster:
                         selected_tags.update(tags)
         
         cmd = [
-            "nuclei", "-l", live_file, "-json", "-o", vuln_out, "-silent", 
+            "nuclei", "-l", alive_file, "-json", "-o", vuln_out, "-silent", 
             "-severity", "low,medium,high,critical", "-tags", ",".join(selected_tags),
             "-rl", "50", "-c", "20"
         ]
         await self._run_command(cmd, timeout=1200)
         
         if os.path.exists(vuln_out):
+            # Severity filtering
+            severity_files = {
+                "critical": open(os.path.join(self.output_dir, "vulns", "critical.txt"), "w"),
+                "high": open(os.path.join(self.output_dir, "vulns", "high.txt"), "w"),
+                "medium": open(os.path.join(self.output_dir, "vulns", "medium.txt"), "w"),
+                "low": open(os.path.join(self.output_dir, "vulns", "low.txt"), "w")
+            }
+            
             try:
                 with open(vuln_out, "r") as f:
                     for line in f:
-                        if line.strip():
-                            self.vulns.append(json.loads(line))
-            except Exception as e:
-                logger.error(f"Error parsing nuclei results: {e}")
+                        if not line.strip(): continue
+                        try:
+                            vuln_data = json.loads(line)
+                            self.vulns.append(vuln_data)
+                            
+                            sev = vuln_data.get("info", {}).get("severity", "info").lower()
+                            if sev in severity_files:
+                                host = vuln_data.get("host", "")
+                                name = vuln_data.get("info", {}).get("name", "")
+                                severity_files[sev].write(f"[{sev.upper()}] {host} - {name}\n")
+                        except Exception as e:
+                            logger.error(f"Error parsing nuclei JSON line: {e}")
+            finally:
+                for f in severity_files.values():
+                    f.close()
         
         # Check specifically for takeovers
         takeover_out = os.path.join(self.output_dir, "vulns", "takeovers.txt")
         cmd_takeover = [
-            "nuclei", "-l", live_file, 
+            "nuclei", "-l", alive_file, 
             "-tags", "takeover", 
             "-o", takeover_out, 
             "-silent"
@@ -504,11 +581,11 @@ class ReconMaster:
 
         print(f"{Colors.BLUE}[*] Deep crawling endpoints with Katana...{Colors.ENDC}")
         
-        live_file = os.path.join(self.output_dir, "subdomains", "live_hosts.txt")
+        alive_file = os.path.join(self.output_dir, "http", "alive.txt")
         urls_out = os.path.join(self.output_dir, "endpoints", "all_urls.txt")
         
         cmd = [
-            "katana", "-list", live_file, "-jc", "-o", urls_out, 
+            "katana", "-list", alive_file, "-jc", "-o", urls_out, 
             "-silent", "-concurrency", str(self.threads), "-depth", "3", 
             "-field", "url,path,header,response"
         ]
@@ -534,7 +611,15 @@ class ReconMaster:
             return
 
         print(f"{Colors.BLUE}[*] Analyzing {len(self.js_files)} JS files for secrets/endpoints (Parallel)...{Colors.ENDC}")
-        js_report = os.path.join(self.output_dir, "js", "js_analysis.txt")
+        
+        js_list_file = os.path.join(self.output_dir, "js", "javascript_files.txt")
+        secrets_file = os.path.join(self.output_dir, "js", "secrets.txt")
+        endpoints_file = os.path.join(self.output_dir, "js", "endpoints.txt")
+        
+        # Save JS file list
+        with open(js_list_file, "w") as f:
+            for js in sorted(self.js_files):
+                f.write(f"{js}\n")
         
         max_js = 100 if not self.daily else 30
         if len(self.js_files) > max_js:
@@ -571,7 +656,6 @@ class ReconMaster:
                                 if matches:
                                     matches = list(set(matches))
                                     if name == "endpoint":
-                                        # Fixed precedence bug: (len > 5) AND ('.' OR '/')
                                         matches = [m for m in matches if len(m) > 5 and ("." in m or "/" in m)]
                                     
                                     # Scope check for discovered endpoints
@@ -589,12 +673,18 @@ class ReconMaster:
             js_tasks = [scan_js(url) for url in list(self.js_files)[:max_js]]
             results = await asyncio.gather(*js_tasks)
             
-            with open(js_report, "w") as report:
+            with open(secrets_file, "w") as f_sec, open(endpoints_file, "w") as f_end:
                 for url, findings in results:
                     for name, matches in findings:
-                        report.write(f"--- {name.upper()} in {url} ---\n")
-                        for m in matches[:10]:
-                            report.write(f"{m}\n")
+                        if name == "endpoint":
+                            f_end.write(f"--- Endpoints in {url} ---\n")
+                            for m in matches[:20]:
+                                f_end.write(f"{m}\n")
+                        else:
+                            f_sec.write(f"--- {name.upper()} in {url} ---\n")
+                            for m in matches[:10]:
+                                f_sec.write(f"{m}\n")
+                        
                         if findings:
                             logger.info(f"JS Security Finding in {url}: {len(findings)} categories")
 
@@ -667,7 +757,7 @@ class ReconMaster:
 
         print(f"{Colors.BLUE}[*] Discovering sensitive files...{Colors.ENDC}")
         sensitive_paths = [".env", ".git/config", ".vscode/settings.json", "config.php.bak", "web.config", "robots.txt", "sitemap.xml", ".htaccess"]
-        results_file = os.path.join(self.output_dir, "vulns", "sensitive_files.txt")
+        results_file = os.path.join(self.output_dir, "vulns", "exposed_secrets.txt")
         
         # Explicitly configure sessions and connectors
         connector = aiohttp.TCPConnector(ssl=False, limit=10)
@@ -715,7 +805,7 @@ class ReconMaster:
         if not candidates:
             candidates = list(self.live_domains)[:5]
             
-        param_out = os.path.join(self.output_dir, "params", "discovered_params.txt")
+        param_out = os.path.join(self.output_dir, "endpoints", "parameters.txt")
         
         for url in candidates:
             cmd = ["arjun", "-u", url, "--passive", "-oT", param_out + "_tmp", "--silent"]
@@ -823,33 +913,57 @@ class ReconMaster:
             json.dump(current_state, f)
 
     def generate_report(self):
-        """Create a professional Markdown summary report"""
-        print(f"{Colors.BLUE}[*] Generating final assessment report...{Colors.ENDC}")
-        report_path = os.path.join(self.output_dir, "reports", "RECON_SUMMARY.md")
-        json_path = os.path.join(self.output_dir, "reports", "recon_data.json")
+        """Create a professional Markdown summary report and organized data outputs"""
+        print(f"{Colors.BLUE}[*] Generating final assessment report and exports...{Colors.ENDC}")
+        
+        # Core reports in the root directory as per README spec
+        report_path = os.path.join(self.output_dir, "executive_report.md")
+        json_path = os.path.join(self.output_dir, "summary.json")
         
         report_data = {
-            "target": self.target,
-            "timestamp": self.timestamp,
-            "subdomains_count": len(self.subdomains),
-            "live_hosts": list(self.live_domains),
-            "vulnerabilities": self.vulns,
-            "takeovers": self.takeovers,
-            "tech_stack": self.tech_stack,
+            "scan_info": {
+                "target": self.target,
+                "start_time": self.timestamp,
+                "end_time": datetime.now().isoformat(),
+                "duration": "N/A", # Calculated in run_recon
+                "version": VERSION
+            },
+            "statistics": {
+                "subdomains_found": len(self.subdomains),
+                "live_hosts": len(self.live_domains),
+                "vulnerabilities": len(self.vulns),
+                "endpoints_discovered": len(self.urls),
+                "js_files_analyzed": len(self.js_files)
+            },
+            "findings": {
+                "critical": sum(1 for v in self.vulns if v.get('info', {}).get('severity') == 'critical'),
+                "high": sum(1 for v in self.vulns if v.get('info', {}).get('severity') == 'high'),
+                "medium": sum(1 for v in self.vulns if v.get('info', {}).get('severity') == 'medium'),
+                "low": sum(1 for v in self.vulns if v.get('info', {}).get('severity') == 'low'),
+                "info": sum(1 for v in self.vulns if v.get('info', {}).get('severity') == 'info')
+            },
             "risk_score": self._calculate_risk_score()
         }
         
+        # Save structured JSON summary
         with open(json_path, "w") as f:
             json.dump(report_data, f, indent=4)
             
+        # Generate Markdown Executive Report
         with open(report_path, "w") as f:
-            f.write(f"# Reconnaissance Summary: {self.target}\n\n")
+            f.write(f"# Reconnaissance Executive Summary: {self.target}\n\n")
             f.write(f"**Date:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
-            f.write(f"**Scope:** {len(self.subdomains)} Subdomains | {len(self.live_domains)} Live Hosts\n\n")
+            f.write(f"**Target:** {self.target} | **Risk Score:** {report_data['risk_score']}/100\n\n")
             
-            f.write("## 🛡️ Vulnerabilities & Findings\n")
+            f.write("## 📊 Scan Statistics\n")
+            f.write(f"- **Subdomains Discovered:** {report_data['statistics']['subdomains_found']}\n")
+            f.write(f"- **Live Web Hosts:** {report_data['statistics']['live_hosts']}\n")
+            f.write(f"- **Vulnerabilities Found:** {report_data['statistics']['vulnerabilities']}\n")
+            f.write(f"- **Endpoints Discovered:** {report_data['statistics']['endpoints_discovered']}\n\n")
+            
+            f.write("## 🛡️ Vulnerabilities & Critical Findings\n")
             if not self.vulns and not self.takeovers:
-                f.write("No critical vulnerabilities discovered during basic scan.\n\n")
+                f.write("No high-severity vulnerabilities discovered in the automated phase.\n\n")
             else:
                 if self.takeovers:
                     f.write("### 🚨 Subdomain Takeovers\n")
@@ -857,58 +971,185 @@ class ReconMaster:
                     f.write("\n")
                 
                 if self.vulns:
-                    f.write("### ⚠️ Key Findings\n")
+                    f.write("### ⚠️ Severity Distribution\n")
+                    f.write(f"- 🔴 Critical: {report_data['findings']['critical']}\n")
+                    f.write(f"- 🟠 High: {report_data['findings']['high']}\n")
+                    f.write(f"- 🟡 Medium: {report_data['findings']['medium']}\n")
+                    f.write(f"- 🔵 Low: {report_data['findings']['low']}\n\n")
+                    
+                    f.write("### 🔍 Top Findings\n")
                     for v in self.vulns[:20]:
-                        f.write(f"- **[{v.get('info',{}).get('severity','UNKNOWN')}]** {v.get('info',{}).get('name')} -> {v.get('matched-at')}\n")
-                    if len(self.vulns) > 20: f.write(f"\n*... and {len(self.vulns)-20} more findings in JSON report.*\n")
+                        f.write(f"- **[{v.get('info',{}).get('severity','UNKNOWN').upper()}]** {v.get('info',{}).get('name')} -> {v.get('matched-at')}\n")
+                    if len(self.vulns) > 20: 
+                        f.write(f"\n*Full findings available in `./vulns/nuclei_results.json`*\n")
 
-                f.write("\n## 🧠 AI Threat Analysis\n\n")
-                if self.vulns:
-                    for v in self.vulns[:5]:
-                        analysis = self._generate_ai_profile(v)
-                        f.write(f"### {v.get('info', {}).get('name')}\n")
-                        f.write(f"- **AI Profile**: {analysis}\n")
-                        f.write(f"- **Target**: {v.get('matched-at')}\n\n")
-                else:
-                    f.write("No vulnerabilities to profile.\n\n")
+            f.write("\n## 🧠 Threat Intelligence Analysis\n\n")
+            if self.vulns:
+                for v in [v for v in self.vulns if v.get('info', {}).get('severity') in ['critical', 'high']][:5]:
+                    analysis = self._generate_ai_profile(v)
+                    f.write(f"### {v.get('info', {}).get('name')}\n")
+                    f.write(f"- **Analysis**: {analysis}\n")
+                    f.write(f"- **Location**: {v.get('matched-at')}\n\n")
+            else:
+                f.write("No critical issues to profile.\n\n")
 
-                if self.new_findings.get("subdomains"):
-                    f.write("## 🧬 Regression Analysis (New Findings)\n\n")
-                    for sub in self.new_findings["subdomains"]:
-                        f.write(f"- 🆕 [New Host] {sub}\n")
-                    f.write("\n")
+            if self.new_findings.get("subdomains"):
+                f.write("## 🧬 Regression Analysis (New Attack Surface)\n\n")
+                for sub in self.new_findings["subdomains"]:
+                    f.write(f"- 🆕 [New Host] {sub}\n")
+                f.write("\n")
 
-            js_findings_path = os.path.join(self.output_dir, "js", "js_analysis.txt")
-            if os.path.exists(js_findings_path) and os.path.getsize(js_findings_path) > 0:
-                f.write("\n### 📜 JavaScript Secrets & Endpoints\n")
-                f.write("Interesting data found in JS files. Check `./js/js_analysis.txt` for full details.\n")
-
-            f.write("\n## 🌐 Infrastructure & Tech Stack\n")
+            f.write("\n## 🌐 Infrastructure Overview\n")
             for url, techs in list(self.tech_stack.items())[:10]:
                 f.write(f"- **{url}**: {', '.join(techs)}\n")
             
-            f.write(f"\n## � Assessment Summary\n")
-            f.write(f"- **Overall Risk Score:** {report_data['risk_score']}/100\n")
-            f.write(f"- Full Reports: `{os.path.abspath(self.output_dir)}`\n")
-            f.write(f"- Screenshots: `./screenshots/`\n")
-            f.write(f"- Endpoints: `./endpoints/all_urls.txt`\n")
+            f.write(f"\n## 📂 Artifacts Reference\n")
+            f.write(f"- **Full JSON Summary:** `./summary.json`\n")
+            f.write(f"- **Validated Hosts:** `./http/alive.txt`\n")
+            f.write(f"- **Vulnerability Data:** `./vulns/`\n")
+            f.write(f"- **JS Secrets/Analysis:** `./js/`\n")
+            f.write(f"- **Screenshots:** `./screenshots/`\n")
+            f.write(f"- **Exports (Burp/ZAP):** `./exports/`\n")
             
+        # Run exports
         self.export_burp_targets()
         self.export_burp_issues()
         self.export_zap_urls()
         
-        print(f"{Colors.GREEN}[+] Report generated successfully at: {report_path}{Colors.ENDC}")
+        # Generate HTML Report (Interactive Dashboard)
+        self.generate_html_report(report_data)
+        
+        print(f"{Colors.GREEN}[+] Reports and exports generated successfully at: {self.output_dir}{Colors.ENDC}")
+
+    def generate_html_report(self, data):
+        """Generate a standalone interactive HTML report dashboard"""
+        html_path = os.path.join(self.output_dir, "full_report.html")
+        
+        html_content = f"""
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ReconMaster Report - {data['scan_info']['target']}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {{ background-color: #f8f9fa; color: #212529; }}
+        .header {{ background: linear-gradient(135deg, #0d6efd 0%, #00d2ff 100%); color: white; padding: 2rem 0; margin-bottom: 2rem; border-bottom: 5px solid #00b8d4; }}
+        .card {{ border: none; box-shadow: 0 4px 6px rgba(0,0,0,0.1); border-radius: 10px; margin-bottom: 1.5rem; }}
+        .stat-card {{ text-align: center; padding: 1.5rem; }}
+        .stat-value {{ font-size: 2.5rem; font-weight: bold; color: #0d6efd; }}
+        .severity-critical {{ border-left: 5px solid #dc3545; }}
+        .severity-high {{ border-left: 5px solid #fd7e14; }}
+        .severity-medium {{ border-left: 5px solid #ffc107; }}
+        .severity-low {{ border-left: 5px solid #0dcaf0; }}
+        .tech-badge {{ margin: 2px; }}
+    </style>
+</head>
+<body>
+    <div class="header text-center">
+        <h1>🛰️ ReconMaster Scan Report</h1>
+        <p class="lead">Target: {data['scan_info']['target']} | Date: {data['scan_info']['start_time']}</p>
+    </div>
+
+    <div class="container">
+        <div class="row">
+            <div class="col-md-3">
+                <div class="card stat-card">
+                    <div class="stat-value">{data['statistics']['subdomains_found']}</div>
+                    <div class="text-muted">Subdomains</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card stat-card">
+                    <div class="stat-value">{data['statistics']['live_hosts']}</div>
+                    <div class="text-muted">Live Hosts</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card stat-card">
+                    <div class="stat-value">{data['statistics']['vulnerabilities']}</div>
+                    <div class="text-muted">Vulnerabilities</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card stat-card">
+                    <div class="stat-value">{data['risk_score']}/100</div>
+                    <div class="text-muted">Risk Score</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row mt-4">
+            <div class="col-md-8">
+                <div class="card">
+                    <div class="card-header bg-white"><strong>🛡️ Recent Findings</strong></div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table">
+                                <thead>
+                                    <tr><th>Severity</th><th>Vulnerability</th><th>Target</th></tr>
+                                </thead>
+                                <tbody>
+        """
+        
+        for v in self.vulns[:20]:
+            sev = v.get('info', {}).get('severity', 'info').lower()
+            class_name = f"severity-{sev}"
+            html_content += f"""
+                                    <tr class="{class_name}">
+                                        <td><span class="badge bg-{'danger' if sev=='critical' else 'warning' if sev in ['high','medium'] else 'info'}">{sev.upper()}</span></td>
+                                        <td>{v.get('info', {}).get('name')}</td>
+                                        <td><code>{v.get('matched-at')}</code></td>
+                                    </tr>
+            """
+            
+        html_content += """
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-header bg-white"><strong>🌐 Technology Stack</strong></div>
+                    <div class="card-body">
+        """
+        
+        for url, techs in list(self.tech_stack.items())[:15]:
+            html_content += f"<div class='mb-2'><strong>{url.split('//')[-1]}</strong><br>"
+            for t in techs[:5]:
+                html_content += f"<span class='badge bg-secondary tech-badge'>{t}</span>"
+            html_content += "</div>"
+            
+        html_content += """
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <footer class="text-center mt-5 mb-5 text-muted">
+            <p>Generated by ReconMaster v3.1.0-Pro</p>
+        </footer>
+    </div>
+</body>
+</html>
+        """
+        
+        with open(html_path, "w") as f:
+            f.write(html_content)
 
     def export_burp_targets(self):
         """Export URLs for Burp Suite Site Map import"""
-        out = os.path.join(self.output_dir, "reports", "burp_urls.txt")
+        out = os.path.join(self.output_dir, "exports", "burp_sitemap.txt")
         with open(out, "w") as f:
             for url in sorted(self.urls):
                 f.write(url + "\n")
 
     def export_burp_issues(self):
         """Export findings in a format suitable for Burp Issue Importer (with redaction)"""
-        out = os.path.join(self.output_dir, "reports", "burp_issues.json")
+        out = os.path.join(self.output_dir, "exports", "burp_issues.json")
         def _redact(val):
             val_str = str(val)
             return val_str[:4] + "****" if len(val_str) > 8 else val_str
@@ -929,8 +1170,8 @@ class ReconMaster:
 
     def export_zap_urls(self):
         """Export URLs for OWASP ZAP Import"""
-        out = os.path.join(self.output_dir, "reports", "zap_urls.txt")
-        context_out = os.path.join(self.output_dir, "reports", "zap_context.context")
+        out = os.path.join(self.output_dir, "exports", "zap_urls.txt")
+        context_out = os.path.join(self.output_dir, "exports", "zap_context.xml")
         
         with open(out, "w") as f:
             for url in self.urls:

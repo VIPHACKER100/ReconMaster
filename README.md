@@ -41,6 +41,7 @@
 - [Configuration](#-configuration)
 - [Output Structure](#-output-structure)
 - [Architecture](#-architecture)
+- [Scripts & Tools Reference](#️-scripts--tools-reference)
 - [Advanced Features](#-advanced-features)
 - [Troubleshooting](#-troubleshooting)
 - [Contributing](#-contributing)
@@ -371,6 +372,34 @@ daily_recon:
     - schedules
 ```
 
+### Method 4: Wordlist Management
+
+ReconMaster uses high-quality wordlists for subdomain enumeration and fuzzing. Upgrade to Pro-level wordlists:
+
+#### Linux/macOS
+```bash
+# Upgrade wordlists to Pro level
+chmod +x scripts/upgrade_wordlists.sh
+./scripts/upgrade_wordlists.sh
+```
+
+#### Windows (PowerShell)
+```powershell
+# Upgrade wordlists to Pro level
+.\upgrade_wordlists.ps1
+```
+
+**Downloaded Wordlists:**
+- **dns_common.txt** - Top 110,000 subdomains (1.8 MB)
+- **directory-list.txt** - Medium directory list (456 KB)
+- **php_fuzz.txt** - PHP-specific fuzzing patterns (89 KB)
+- **params.txt** - Common parameter names (12 KB)
+- **resolvers.txt** - Trusted DNS resolvers (234 KB)
+
+All wordlists are sourced from:
+- [SecLists](https://github.com/danielmiessler/SecLists) - Industry-standard wordlists
+- [Trickest Resolvers](https://github.com/trickest/resolvers) - Validated DNS resolvers
+
 ---
 
 ## 📖 Usage Examples
@@ -416,6 +445,15 @@ python reconmaster.py -d target.com \
 # Rate limiting (requests per second)
 python reconmaster.py -d target.com \
     --rate-limit 10 \
+    --i-understand-this-requires-authorization
+
+# Use configuration file (recommended for complex scans)
+python reconmaster.py --config config/config.yaml \
+    --i-understand-this-requires-authorization
+
+# Use custom wordlist from upgraded wordlists
+python reconmaster.py -d target.com \
+    --wordlist wordlists/dns_common.txt \
     --i-understand-this-requires-authorization
 ```
 
@@ -773,6 +811,231 @@ class ReconModule:
 
 ---
 
+## 🛠️ Scripts & Tools Reference
+
+ReconMaster includes several utility scripts to streamline your workflow:
+
+### Installation Scripts
+
+#### `scripts/install_tools.sh`
+**Purpose:** Automated installation of all reconnaissance tools
+
+**Platforms:** Linux, macOS
+
+**Features:**
+- Detects OS automatically
+- Installs Go if not present
+- Installs all ProjectDiscovery tools (Subfinder, HTTPx, Nuclei, Katana, DNSX, Naabu)
+- Installs TomNomNom tools (Assetfinder, Waybackurls, Gf)
+- Installs other tools (Amass, GoWitness, Hakrawler)
+- Updates Nuclei templates
+- Verifies all installations
+- Configures PATH automatically
+
+**Usage:**
+```bash
+chmod +x scripts/install_tools.sh
+./scripts/install_tools.sh
+```
+
+### Wordlist Management
+
+#### `scripts/upgrade_wordlists.sh` (Linux/macOS)
+**Purpose:** Download and upgrade wordlists to Pro level
+
+**Features:**
+- Downloads 5 high-quality wordlists from SecLists and Trickest
+- Shows download progress and file sizes
+- Displays line counts for each wordlist
+- Removes redundant old files
+- Provides detailed summary
+
+**Usage:**
+```bash
+chmod +x scripts/upgrade_wordlists.sh
+./scripts/upgrade_wordlists.sh
+```
+
+#### `upgrade_wordlists.ps1` (Windows)
+**Purpose:** Same as above, for Windows PowerShell
+
+**Usage:**
+```powershell
+.\upgrade_wordlists.ps1
+```
+
+**Downloaded Wordlists:**
+| File | Description | Size | Lines | Source |
+|------|-------------|------|-------|--------|
+| `dns_common.txt` | Top 110K subdomains | 1.8 MB | 110,000 | SecLists |
+| `directory-list.txt` | Medium directory list | 456 KB | 30,000 | SecLists |
+| `php_fuzz.txt` | PHP fuzzing patterns | 89 KB | 5,000 | SecLists |
+| `params.txt` | Common parameters | 12 KB | 2,588 | SecLists |
+| `resolvers.txt` | Trusted DNS resolvers | 234 KB | 15,000 | Trickest |
+
+### Migration Scripts
+
+#### `scripts/migrate_v1_to_v3.py`
+**Purpose:** Migrate configuration from v1.x/v2.x to v3.x
+
+**Features:**
+- Supports both v1.x and v2.x migration
+- Creates automatic backups
+- Converts to new YAML format
+- Preserves existing settings
+- Provides migration summary
+
+**Usage:**
+```bash
+# From v1.x
+python scripts/migrate_v1_to_v3.py --version v1 --config old_config.json
+
+# From v2.x
+python scripts/migrate_v1_to_v3.py --version v2 --config config.yaml
+
+# Custom output location
+python scripts/migrate_v1_to_v3.py --version v2 --config old.json --output new_config.yaml
+
+# Skip backups
+python scripts/migrate_v1_to_v3.py --version v2 --config old.json --no-backup
+```
+
+### Development Tools
+
+#### `requirements-dev.txt`
+**Purpose:** Development dependencies for testing and code quality
+
+**Includes:**
+- Testing: pytest, pytest-asyncio, pytest-cov
+- Linting: flake8, pylint, mypy
+- Formatting: black, isort
+- Security: bandit, safety
+- Documentation: Sphinx
+- Pre-commit hooks
+
+**Usage:**
+```bash
+pip install -r requirements-dev.txt
+```
+
+#### `.pre-commit-config.yaml`
+**Purpose:** Automated code quality checks before commits
+
+**Checks:**
+- Code formatting (black, isort)
+- Linting (flake8, pydocstyle)
+- Security scanning (bandit)
+- Type checking (mypy)
+- YAML/JSON validation
+- Markdown linting
+
+**Usage:**
+```bash
+# Install hooks
+pip install pre-commit
+pre-commit install
+
+# Run manually
+pre-commit run --all-files
+```
+
+### CI/CD Configuration
+
+#### `.github/workflows/reconmaster.yml.example`
+**Purpose:** GitHub Actions workflow template
+
+**Features:**
+- Scheduled daily scans
+- Manual trigger support
+- Dependency caching
+- Results upload as artifacts
+- Failure notifications
+
+**Setup:**
+```bash
+cp .github/workflows/reconmaster.yml.example .github/workflows/reconmaster.yml
+# Configure secrets: RECON_DOMAIN, WEBHOOK_URL
+```
+
+#### `.gitlab-ci.yml`
+**Purpose:** GitLab CI/CD pipeline
+
+**Features:**
+- Multi-stage pipeline (build, test, scan, deploy)
+- Docker support
+- Security scanning
+- Code quality checks
+- Artifact management
+
+**Setup:**
+```bash
+# Configure CI/CD variables: RECON_DOMAIN, DISCORD_WEBHOOK
+```
+
+#### `Jenkinsfile`
+**Purpose:** Jenkins pipeline configuration
+
+**Features:**
+- Parallel execution
+- HTML report publishing
+- Diff analysis
+- Webhook notifications
+
+**Setup:**
+```bash
+# Configure credentials: recon-domain, discord-webhook
+```
+
+### Configuration Files
+
+#### `config/config.yaml`
+**Purpose:** Main configuration template
+
+**Sections:**
+- Target configuration (domains, scope, exclusions)
+- Scanning options (rate limits, timeouts, concurrency)
+- Module configuration (subdomain, DNS, HTTP, vuln, endpoint)
+- Notifications (Discord, Slack, Telegram, Email)
+- Output settings (formats, logging)
+- Advanced options (circuit breaker, caching, proxy, plugins)
+- API keys (Shodan, Censys, SecurityTrails, etc.)
+
+**Usage:**
+```bash
+# Copy and customize
+cp config/config.yaml config/my-config.yaml
+nano config/my-config.yaml
+
+# Use in scans
+python reconmaster.py --config config/my-config.yaml
+```
+
+### Quick Reference
+
+```bash
+# Complete setup (new installation)
+git clone https://github.com/VIPHACKER100/ReconMaster.git
+cd ReconMaster
+./scripts/install_tools.sh
+./scripts/upgrade_wordlists.sh
+pip install -r requirements.txt
+
+# Development setup
+pip install -r requirements-dev.txt
+pre-commit install
+
+# Upgrade from older version
+python scripts/migrate_v1_to_v3.py --version v2 --config old_config.json
+./scripts/upgrade_wordlists.sh
+
+# Update tools and wordlists
+./scripts/install_tools.sh
+./scripts/upgrade_wordlists.sh
+nuclei -update-templates
+```
+
+---
+
 ## 🎯 Advanced Features
 
 ### Circuit Breaker Pattern
@@ -839,41 +1102,68 @@ class CacheManager:
 
 ### Custom Plugin Development
 
-Create your own scanning modules:
+Create your own scanning modules by subclassing the standard plugin pattern. ReconMaster automatically discovers and executes plugins from the `plugins/` directory.
 
 ```python
-from reconmaster.core import Plugin, PluginResult
+from typing import Dict, List
+import asyncio
+import aiohttp
 
-class WordPressScanner(Plugin):
-    """Custom WordPress vulnerability scanner"""
+class WordPressPlugin:
+    """Standard WordPress vulnerability scanner plugin"""
     
     def __init__(self):
-        super().__init__(
-            name="wordpress-scanner",
-            version="1.0.0",
-            description="WordPress vulnerability detection"
-        )
+        self.name = "wordpress-scanner"
+        self.version = "1.0.0"
+        self.description = "WordPress detection and enumeration"
+        self.author = "VIPHACKER100"
     
-    async def execute(self, target):
-        # Check if WordPress is present
-        is_wp = await self.detect_wordpress(target)
-        if not is_wp:
-            return PluginResult(success=False, message="Not a WordPress site")
-        
-        # Enumerate plugins
-        plugins = await self.enumerate_plugins(target)
-        
-        # Check for vulnerabilities
-        vulns = await self.check_vulnerabilities(plugins)
-        
-        return PluginResult(
-            success=True,
-            data={'plugins': plugins, 'vulnerabilities': vulns}
-        )
+    @property
+    def metadata(self) -> Dict:
+        """Return plugin metadata for the orchestration engine"""
+        return {
+            "name": self.name,
+            "version": self.version,
+            "description": self.description,
+            "author": self.author,
+            "enabled": True
+        }
     
-    async def detect_wordpress(self, target):
-        # Implementation
-        pass
+    async def execute(self, target: str, **kwargs) -> Dict:
+        """Entry point for parallel execution"""
+        results = {"is_wordpress": False, "version": None, "plugins": []}
+        
+        # Detection logic
+        is_wp, version = await self.detect_wordpress(target)
+        if not is_wp: return results
+        
+        # Advanced Enumeration
+        results["is_wordpress"] = True
+        results["version"] = version
+        results["plugins"] = await self.enumerate_plugins(target)
+        
+        return results
+
+# Mandatory entry point for the plugin loader
+def get_plugin():
+    return WordPressPlugin()
+```
+
+### 📊 Interactive HTML Report
+
+ReconMaster v3.1.0-Pro generates a premium, standalone HTML dashboard for every scan.
+
+**Key Features:**
+- **Visual Analytics**: Dynamic charts for vulnerability distribution and target statistics.
+- **Risk Scoring**: Real-time calculation of target security posture (0-100).
+- **Filtering & Search**: Instantly filter through thousands of subdomains and endpoints.
+- **Tech Stack Profiling**: Visual breakdown of your target's infrastructure.
+- **OpSec Summary**: Review scan logs and performance metrics directly in the browser.
+
+**Accessing reports:**
+```bash
+# Open directly from the results directory
+open recon_results/target_timestamp/full_report.html
 ```
 
 ---
@@ -1169,11 +1459,13 @@ The `--i-understand-this-requires-authorization` flag is required to acknowledge
 # From v2.x to v3.x
 git pull origin main
 pip install -r requirements.txt --upgrade
+./scripts/upgrade_wordlists.sh  # Upgrade wordlists to Pro level
 python reconmaster.py --migrate-config
 
 # From v1.x to v3.x
 # Manual configuration migration required
-python scripts/migrate_v1_to_v3.py
+python scripts/migrate_v1_to_v3.py --version v1 --config old_config.json
+./scripts/upgrade_wordlists.sh  # Upgrade wordlists to Pro level
 ```
 
 ---
@@ -1185,9 +1477,12 @@ python scripts/migrate_v1_to_v3.py
 **New Features:**
 - 🚀 Enhanced async performance with improved concurrency control
 - 🔌 Plugin system v2.0 with hot-reload support
-- 📊 Advanced HTML reporting with interactive charts
+- 📊 Advanced HTML reporting with interactive charts and dashboard
+- 📁 Professional hierarchical project structure with automated severity filtering
 - 🔒 Improved OpSec with randomized timing and User-Agent rotation
-- 🌐 Multi-language support (EN, ES, FR, DE)
+- 🌐 Standalone interactive HTML dashboard for rapid assessment
+- 📄 Dedicated logging system with scan, error, and debug logs
+- 📦 Consolidated export module for Burp Suite and OWASP ZAP
 
 **Improvements:**
 - ⚡ 40% faster subdomain enumeration

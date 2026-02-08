@@ -1,0 +1,181 @@
+# ReconMaster GitLab CI/CD Configuration
+# This is an example .gitlab-ci.yml for automated reconnaissance
+# Copy this file to your repository root and configure CI/CD variables
+
+stages:
+  - build
+  - test
+  - scan
+  - deploy
+
+variables:
+  PYTHON_VERSION: "3.9"
+  DOCKER_IMAGE: "reconmaster:latest"
+
+# Cache configuration
+cache:
+  paths:
+    - .cache/pip
+    - go/pkg/mod
+
+# Build Docker image
+build:docker:
+  stage: build
+  image: docker:latest
+  services:
+    - docker:dind
+  script:
+    - docker build -t $DOCKER_IMAGE .
+    - docker save $DOCKER_IMAGE > reconmaster.tar
+  artifacts:
+    paths:
+      - reconmaster.tar
+    expire_in: 1 day
+  only:
+    - main
+    - develop
+
+# Run tests
+test:unit:
+  stage: test
+  image: python:$PYTHON_VERSION
+  before_script:
+    - pip install -r requirements-dev.txt
+  script:
+    - pytest tests/ -v --cov=reconmaster
+    - flake8 reconmaster.py
+  coverage: '/TOTAL.*\s+(\d+%)$/'
+  only:
+    - merge_requests
+    - main
+
+# Daily reconnaissance scan
+scan:daily:
+  stage: scan
+  image: python:$PYTHON_VERSION
+  before_script:
+    - apt-get update && apt-get install -y golang-go
+    - pip install -r requirements.txt
+    - chmod +x scripts/install_tools.sh
+    - ./scripts/install_tools.sh
+  script:
+    - |
+      python reconmaster.py \
+        -d $TARGET_DOMAIN \
+        --daily \
+        --webhook $WEBHOOK_URL \
+        --i-understand-this-requires-authorization
+  artifacts:
+    paths:
+      - recon_results/
+    expire_in: 30 days
+  only:
+    - schedules
+  variables:
+    TARGET_DOMAIN: $RECON_DOMAIN
+    WEBHOOK_URL: $DISCORD_WEBHOOK
+
+# Docker-based scan
+scan:docker:
+  stage: scan
+  image: docker:latest
+  services:
+    - docker:dind
+  dependencies:
+    - build:docker
+  before_script:
+    - docker load < reconmaster.tar
+  script:
+    - |
+      docker run --rm \
+        -v $(pwd)/results:/app/recon_results \
+        -e TARGET_DOMAIN=$RECON_DOMAIN \
+        -e WEBHOOK_URL=$DISCORD_WEBHOOK \
+        $DOCKER_IMAGE \
+        -d $RECON_DOMAIN \
+        --daily \
+        --webhook $DISCORD_WEBHOOK \
+        --i-understand-this-requires-authorization
+  artifacts:
+    paths:
+      - results/
+    expire_in: 30 days
+  only:
+    - schedules
+
+# Continuous monitoring (runs every 6 hours)
+scan:continuous:
+  stage: scan
+  image: python:$PYTHON_VERSION
+  before_script:
+    - pip install -r requirements.txt
+    - chmod +x scripts/install_tools.sh
+    - ./scripts/install_tools.sh
+  script:
+    - |
+      python reconmaster.py \
+        -d $RECON_DOMAIN \
+        --continuous \
+        --diff-only \
+        --notify-on-new \
+        --webhook $DISCORD_WEBHOOK \
+        --i-understand-this-requires-authorization
+  artifacts:
+    paths:
+      - recon_results/
+    expire_in: 7 days
+  only:
+    - schedules
+  when: manual
+
+# Deploy results to artifact server (optional)
+deploy:results:
+  stage: deploy
+  image: alpine:latest
+  before_script:
+    - apk add --no-cache rsync openssh-client
+  script:
+    - |
+      rsync -avz --delete \
+        -e "ssh -o StrictHostKeyChecking=no" \
+        recon_results/ \
+        $DEPLOY_USER@$DEPLOY_HOST:$DEPLOY_PATH/
+  only:
+    - schedules
+  when: manual
+
+# Security scan of the codebase
+security:scan:
+  stage: test
+  image: python:$PYTHON_VERSION
+  before_script:
+    - pip install bandit safety
+  script:
+    - bandit -r reconmaster.py -f json -o bandit-report.json
+    - safety check --json > safety-report.json
+  artifacts:
+    paths:
+      - bandit-report.json
+      - safety-report.json
+    expire_in: 30 days
+  allow_failure: true
+  only:
+    - merge_requests
+    - main
+
+# Code quality check
+quality:check:
+  stage: test
+  image: python:$PYTHON_VERSION
+  before_script:
+    - pip install pylint
+  script:
+    - pylint reconmaster.py --output-format=json > pylint-report.json
+  artifacts:
+    paths:
+      - pylint-report.json
+    expire_in: 30 days
+  allow_failure: true
+  only:
+    - merge_requests
+    - main

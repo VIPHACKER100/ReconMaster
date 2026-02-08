@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/VIPHACKER100/ReconMaster/main/assets/logo.png" alt="ReconMaster Logo" width="200">
+  <img src="assets/logo.svg" alt="ReconMaster Logo" width="250">
   <br>
   <b>Professional-Grade Asynchronous Reconnaissance Framework</b>
   <br>

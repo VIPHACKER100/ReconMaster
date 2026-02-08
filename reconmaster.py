@@ -5,8 +5,8 @@ Author: VIPHACKER100
 License: MIT
 """
 
-__version__ = "3.0.0-Pro"
-VERSION = "3.0.0-Pro"
+__version__ = "3.1.0-Pro"
+VERSION = "3.1.0-Pro"
 AUTHOR = "VIPHACKER100"
 GITHUB = "https://github.com/VIPHACKER100/ReconMaster"
 
@@ -138,8 +138,13 @@ class ReconMaster:
         self.semaphore = asyncio.Semaphore(self.threads)
         self.screenshot_semaphore = asyncio.Semaphore(3) # Limit parallel screenshots
         
+        # Persistence & Regression
+        self.state_file = os.path.join(output_dir, f"{target}_state.json")
+        self.new_findings = {"subdomains": [], "vulns": [], "ports": []}
+        
         # Create directory structure
         self._setup_dirs()
+        self._load_state()
 
     def validate_target(self):
         """Strict domain validation"""
@@ -596,7 +601,60 @@ class ReconMaster:
         domain = url.replace("https://", "").replace("http://", "").split("/")[0].split(":")[0]
         return self._is_in_scope(domain)
 
-    async def discover_sensitive_files(self):
+    def _load_state(self):
+        """Load historical scan state for regression analysis"""
+        if os.path.exists(self.state_file):
+            try:
+                with open(self.state_file, "r") as f:
+                    self.previous_state = json.load(f)
+            except Exception:
+                self.previous_state = {}
+        else:
+            self.previous_state = {}
+
+    def _save_state(self):
+        """Save current scan state for future comparison"""
+        state = {
+            "subdomains": list(self.subdomains),
+            "vulns": [v.get("template-id") for v in self.vulns],
+            "timestamp": datetime.now().isoformat()
+        }
+        with open(self.state_file, "w") as f:
+            json.dump(state, f, indent=2)
+
+    def handle_daily_diff(self):
+        """Perform regression analysis to identify new attack surface"""
+        if not self.previous_state:
+            print(f"{Colors.YELLOW}[!] No previous state found. Initializing baseline.{Colors.ENDC}")
+            return
+
+        old_subs = set(self.previous_state.get("subdomains", []))
+        self.new_findings["subdomains"] = list(self.subdomains - old_subs)
+        
+        old_vulns = set(self.previous_state.get("vulns", []))
+        current_vuln_ids = set(v.get("template-id") for v in self.vulns)
+        self.new_findings["vulns"] = list(current_vuln_ids - old_vulns)
+
+        if self.new_findings["subdomains"]:
+            print(f"{Colors.RED}[!] REGRESSION ALERT: {len(self.new_findings['subdomains'])} NEW subdomains discovered!{Colors.ENDC}")
+            for sub in self.new_findings["subdomains"]:
+                print(f"  --> {sub}")
+
+    def _generate_ai_profile(self, vuln: Dict) -> str:
+        """AI-based threat profiling and remediation logic"""
+        info = vuln.get("info", {})
+        name = info.get("name", "Unknown Issue")
+        severity = info.get("severity", "unknown").upper()
+        
+        # Heuristic Intelligence Engine
+        if "cve-" in name.lower():
+            return f"CRITICAL: Known exploit for {name}. Immediate patching required to prevent RCE."
+        if "takeover" in name.lower():
+            return "HIGH RISK: Domain points to dead service. An attacker can hijack this to serve malware."
+        if "exposure" in name.lower() or "secret" in name.lower():
+            return "SENSITIVE LEAK: Internal keys exposed. Rotate credentials immediately and check logs for access."
+            
+        return f"Policy Violation: {name} detected. Review configuration in line with {severity} severity protocols."
         """Check for sensitive files (config, backup, etc.) with safety guard"""
         if not _HAVE_AIOHTTP:
             logger.warning("aiohttp not available, skipping sensitive file discovery.")
@@ -797,6 +855,22 @@ class ReconMaster:
                         f.write(f"- **[{v.get('info',{}).get('severity','UNKNOWN')}]** {v.get('info',{}).get('name')} -> {v.get('matched-at')}\n")
                     if len(self.vulns) > 20: f.write(f"\n*... and {len(self.vulns)-20} more findings in JSON report.*\n")
 
+                f.write("\n## 🧠 AI Threat Analysis\n\n")
+                if self.vulns:
+                    for v in self.vulns[:5]:
+                        analysis = self._generate_ai_profile(v)
+                        f.write(f"### {v.get('info', {}).get('name')}\n")
+                        f.write(f"- **AI Profile**: {analysis}\n")
+                        f.write(f"- **Target**: {v.get('matched-at')}\n\n")
+                else:
+                    f.write("No vulnerabilities to profile.\n\n")
+
+                if self.new_findings.get("subdomains"):
+                    f.write("## 🧬 Regression Analysis (New Findings)\n\n")
+                    for sub in self.new_findings["subdomains"]:
+                        f.write(f"- 🆕 [New Host] {sub}\n")
+                    f.write("\n")
+
             js_findings_path = os.path.join(self.output_dir, "js", "js_analysis.txt")
             if os.path.exists(js_findings_path) and os.path.getsize(js_findings_path) > 0:
                 f.write("\n### 📜 JavaScript Secrets & Endpoints\n")
@@ -899,7 +973,8 @@ async def run_recon(recon, args):
         # Minimal analysis for passive-only
         await recon.take_screenshots()
     
-    # Reporting
+    # Post-processing and state management
+    recon._save_state()
     recon.generate_report()
     await recon._send_notification(f"✅ Recon complete for {recon.target}. Risk Score: {recon._calculate_risk_score()}/100")
     
@@ -944,7 +1019,7 @@ def main():
         recon.validate_target()
         recon.verify_tools()
         
-        # Apply scope and resume
+        # Apply CLI args to recon instance
         if args.include: recon.include_list = [x.strip() for x in args.include.split(",")]
         if args.exclude: recon.exclude_list = [x.strip() for x in args.exclude.split(",")]
         recon.resume = args.resume
@@ -952,7 +1027,15 @@ def main():
         recon.dry_run = getattr(args, 'dry_run', False)
         recon.webhook_url = args.webhook
         
+        # Power-Up: Load state and handle regressions after flags are set
+        recon._load_state() 
+        if recon.daily:
+            recon.handle_daily_diff()
+        
         asyncio.run(run_recon(recon, args))
+        
+        # Post-processing state save
+        recon._save_state()
     except KeyboardInterrupt:
         print(f"\n{Colors.RED}[!] Scan aborted by user.{Colors.ENDC}")
     except Exception as e:

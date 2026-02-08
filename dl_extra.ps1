@@ -29,12 +29,15 @@ function Get-PDTool($n, $u) {
 
 Get-PDTool "nuclei" "https://github.com/projectdiscovery/nuclei/releases/download/v3.3.4/nuclei_3.3.4_windows_amd64.zip"
 
-# Download some wordlists
+# Download Pro-level wordlists
 $wd = Join-Path $curr "wordlists"
 if (-not (Test-Path $wd)) { New-Item -ItemType Directory -Path $wd }
 
-Write-Host "Downloading wordlists..."
-Invoke-WebRequest -Uri "https://raw.githubusercontent.com/danielmiessler/SecLists/master/Discovery/DNS/subdomains-top1million-5000.txt" -OutFile (Join-Path $wd "dns_common.txt")
-Invoke-WebRequest -Uri "https://raw.githubusercontent.com/danielmiessler/SecLists/master/Discovery/Web-Content/common.txt" -OutFile (Join-Path $wd "directory-list.txt")
+Write-Host "Downloading Pro wordlists..."
+Invoke-WebRequest -Uri "https://raw.githubusercontent.com/danielmiessler/SecLists/master/Discovery/DNS/subdomains-top1million-110000.txt" -OutFile (Join-Path $wd "dns_common.txt")
+Invoke-WebRequest -Uri "https://raw.githubusercontent.com/danielmiessler/SecLists/master/Discovery/Web-Content/raft-medium-directories.txt" -OutFile (Join-Path $wd "directory-list.txt")
+Invoke-WebRequest -Uri "https://raw.githubusercontent.com/danielmiessler/SecLists/master/Discovery/Web-Content/Programming-Language-Specific/PHP.fuzz.txt" -OutFile (Join-Path $wd "php_fuzz.txt")
+Invoke-WebRequest -Uri "https://raw.githubusercontent.com/danielmiessler/SecLists/master/Discovery/Web-Content/burp-parameter-names.txt" -OutFile (Join-Path $wd "params.txt")
+Invoke-WebRequest -Uri "https://raw.githubusercontent.com/trickest/resolvers/main/resolvers.txt" -OutFile (Join-Path $wd "resolvers.txt")
 
-Write-Host "Done."
+Write-Host "Done. All Pro wordlists are ready."

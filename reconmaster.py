@@ -119,6 +119,8 @@ class ReconMaster:
         
         self.dir_wordlist = os.path.join(base_path, "wordlists", "directory-list.txt")
         self.php_wordlist = os.path.join(base_path, "wordlists", "php_fuzz.txt")
+        self.params_wordlist = os.path.join(base_path, "wordlists", "params.txt")
+        self.resolvers = os.path.join(base_path, "wordlists", "resolvers.txt")
         
         # Pro features
         self.webhook_url = None
@@ -368,6 +370,8 @@ class ReconMaster:
         if "dnsx" in self.tool_paths:
             print(f"{Colors.BLUE}[*] Resolving {len(self.subdomains)} subdomains with dnsx...{Colors.ENDC}")
             dns_cmd = [self.tool_paths["dnsx"], "-l", subs_file, "-silent", "-o", live_subs]
+            if os.path.exists(self.resolvers):
+                dns_cmd.extend(["-r", self.resolvers])
             await self._run_command(dns_cmd, timeout=300)
             target_list = live_subs if os.path.exists(live_subs) and os.path.getsize(live_subs) > 0 else subs_file
         else:
@@ -716,7 +720,9 @@ class ReconMaster:
         
         for url in candidates:
             cmd = ["arjun", "-u", url, "--passive", "-oT", param_out + "_tmp", "--silent"]
-            await self._run_command(cmd, timeout=60)
+            if os.path.exists(self.params_wordlist):
+                cmd.extend(["-w", self.params_wordlist])
+            await self._run_command(cmd, timeout=120)
             if os.path.exists(param_out + "_tmp"):
                 with open(param_out + "_tmp", "r") as f_src, open(param_out, "a") as f_dst:
                     f_dst.write(f"--- Params for {url} ---\n")

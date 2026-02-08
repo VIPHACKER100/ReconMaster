@@ -1,6 +1,0 @@
-www
-api
-dev
-test
-staging
-admin

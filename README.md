@@ -245,7 +245,7 @@ Get started in under 2 minutes:
 
 ```bash
 # 1. Clone the repository
-git clone https://github.com/VIPHACKER100/ReconMaster.git
+git clone https://github.com/VIPHACKER100/ReconMaster/tree/ADV-RECONMASTER
 cd ReconMaster
 
 # 2. Install dependencies
@@ -291,7 +291,7 @@ ls -la recon_results/example.com_*
 
 ```bash
 # Clone repository
-git clone https://github.com/VIPHACKER100/ReconMaster.git
+git clone https://github.com/VIPHACKER100/ReconMaster/tree/ADV-RECONMASTER
 cd ReconMaster
 
 # Create virtual environment (recommended)
@@ -1014,7 +1014,7 @@ python reconmaster.py --config config/my-config.yaml
 
 ```bash
 # Complete setup (new installation)
-git clone https://github.com/VIPHACKER100/ReconMaster.git
+git clone https://github.com/VIPHACKER100/ReconMaster/tree/ADV-RECONMASTER
 cd ReconMaster
 ./scripts/install_tools.sh
 ./scripts/upgrade_wordlists.sh

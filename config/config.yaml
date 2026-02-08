@@ -1,0 +1,346 @@
+# ReconMaster Configuration File v3.1.0
+# This file contains all configuration options for ReconMaster
+# For detailed documentation, visit: https://github.com/VIPHACKER100/ReconMaster/wiki
+
+# ============================================================================
+# TARGET CONFIGURATION
+# ============================================================================
+targets:
+  # Primary domains to scan
+  domains:
+    - example.com
+    # - api.example.com
+    # - admin.example.com
+  
+  # Scope patterns (supports wildcards and regex)
+  scope:
+    - "*.example.com"
+    - "example.*"
+  
+  # Domains/patterns to exclude from scanning
+  exclusions:
+    - "test.example.com"
+    - "dev.example.com"
+    - "staging.example.com"
+
+# ============================================================================
+# SCANNING OPTIONS
+# ============================================================================
+scan:
+  # Only use passive reconnaissance (no active probing)
+  passive_only: false
+  
+  # Aggressive mode (all modules, maximum depth)
+  aggressive: false
+  
+  # Rate limiting (requests per second)
+  rate_limit: 50
+  
+  # Request timeout (seconds)
+  timeout: 30
+  
+  # Number of retries for failed requests
+  retries: 3
+  
+  # Delay between requests (seconds)
+  delay: 1
+  
+  # Maximum concurrent tasks
+  max_concurrent: 50
+  
+  # User-Agent string (leave empty for random rotation)
+  user_agent: "ReconMaster/3.1.0"
+  
+  # Follow HTTP redirects
+  follow_redirects: true
+  
+  # Verify SSL certificates
+  verify_ssl: false
+
+# ============================================================================
+# MODULE CONFIGURATION
+# ============================================================================
+modules:
+  # Subdomain Enumeration
+  subdomain:
+    enabled: true
+    sources:
+      - subfinder
+      - assetfinder
+      - amass
+    # Custom wordlist for brute-forcing (optional)
+    wordlist: null  # e.g., /path/to/wordlist.txt
+    # Use default wordlists
+    use_default_wordlists: true
+  
+  # DNS Resolution
+  dns:
+    enabled: true
+    # Custom DNS resolvers file (optional)
+    resolvers: null  # e.g., /path/to/resolvers.txt
+    # Validate DNS records
+    validate: true
+    # DNS record types to query
+    record_types:
+      - A
+      - AAAA
+      - CNAME
+      - MX
+      - TXT
+  
+  # HTTP Probing
+  http:
+    enabled: true
+    # Follow redirects
+    follow_redirects: true
+    # Verify SSL certificates
+    verify_ssl: false
+    # Capture screenshots
+    screenshot: true
+    # Extract technologies
+    tech_detect: true
+    # Ports to probe
+    ports:
+      - 80
+      - 443
+      - 8080
+      - 8443
+  
+  # Vulnerability Scanning
+  vuln:
+    enabled: true
+    # Nuclei templates directory (optional)
+    nuclei_templates: null  # e.g., /path/to/nuclei-templates
+    # Severity levels to report
+    severity:
+      - critical
+      - high
+      - medium
+      # - low
+      # - info
+    # Custom templates (optional)
+    custom_templates: []
+    # Update templates before scanning
+    update_templates: true
+  
+  # Endpoint Discovery
+  endpoint:
+    enabled: true
+    # Crawl depth
+    crawl_depth: 3
+    # Extract JavaScript files
+    extract_js: true
+    # Maximum URLs to crawl
+    max_urls: 1000
+    # Crawl timeout (seconds)
+    timeout: 300
+  
+  # JavaScript Analysis
+  javascript:
+    enabled: true
+    # Extract secrets (API keys, tokens, etc.)
+    extract_secrets: true
+    # Extract endpoints
+    extract_endpoints: true
+    # Patterns to search for
+    secret_patterns:
+      - api_key
+      - api_token
+      - access_token
+      - secret_key
+      - password
+      - aws_access_key
+      - aws_secret_key
+  
+  # Port Scanning
+  port_scan:
+    enabled: false
+    # Ports to scan (comma-separated or range)
+    ports: "80,443,8080,8443,3000,5000"
+    # Scan type (syn, connect, udp)
+    scan_type: "syn"
+  
+  # Sensitive File Discovery
+  sensitive_files:
+    enabled: true
+    # Common sensitive paths to check
+    paths:
+      - "/.git/config"
+      - "/.env"
+      - "/config.php"
+      - "/backup.zip"
+      - "/database.sql"
+      - "/.aws/credentials"
+
+# ============================================================================
+# NOTIFICATION SETTINGS
+# ============================================================================
+notifications:
+  # Discord Webhook
+  discord:
+    enabled: false
+    webhook: ""
+    # Notify on new findings only
+    notify_on_new: true
+  
+  # Slack Webhook
+  slack:
+    enabled: false
+    webhook: ""
+    notify_on_new: true
+  
+  # Telegram Bot
+  telegram:
+    enabled: false
+    bot_token: ""
+    chat_id: ""
+    notify_on_new: true
+  
+  # Email Notifications
+  email:
+    enabled: false
+    smtp_server: "smtp.gmail.com"
+    smtp_port: 587
+    use_tls: true
+    username: ""
+    password: ""
+    from: ""
+    to: []
+    notify_on_new: true
+
+# ============================================================================
+# OUTPUT SETTINGS
+# ============================================================================
+output:
+  # Output directory (relative or absolute path)
+  directory: ./recon_results
+  
+  # Output formats
+  formats:
+    - json
+    - md
+    - html
+  
+  # Verbose output
+  verbose: true
+  
+  # Save detailed logs
+  save_logs: true
+  
+  # Log level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+  log_level: INFO
+  
+  # Compress old results
+  compress_old_results: false
+  
+  # Days to keep results before compression
+  retention_days: 30
+
+# ============================================================================
+# ADVANCED OPTIONS
+# ============================================================================
+advanced:
+  # Circuit Breaker Configuration
+  circuit_breaker:
+    enabled: true
+    # Number of failures before opening circuit
+    threshold: 5
+    # Timeout before attempting to close circuit (seconds)
+    timeout: 300
+    # Status codes that trigger circuit breaker
+    trigger_codes:
+      - 403
+      - 429
+      - 503
+  
+  # Resource Limits
+  resource_limits:
+    # Maximum memory usage (MB)
+    max_memory: 8192
+    # Maximum CPU usage (percentage)
+    max_cpu: 80
+    # Maximum disk usage for results (MB)
+    max_disk: 10240
+  
+  # Proxy Configuration
+  proxy:
+    enabled: false
+    http: ""
+    https: ""
+    # Proxy authentication
+    username: ""
+    password: ""
+  
+  # Custom HTTP Headers
+  custom_headers:
+    User-Agent: "ReconMaster/3.1.0"
+    # Accept: "text/html,application/json"
+  
+  # Caching
+  cache:
+    enabled: true
+    # Cache directory
+    directory: .cache
+    # Cache TTL (seconds)
+    ttl: 3600
+    # Cache DNS results
+    cache_dns: true
+    # Cache HTTP responses
+    cache_http: false
+  
+  # Plugin System
+  plugins:
+    enabled: true
+    # Plugin directory
+    directory: ./plugins
+    # Auto-load plugins
+    auto_load: true
+    # Enabled plugins (empty = all)
+    enabled_plugins: []
+  
+  # Daily Automation
+  daily_automation:
+    enabled: false
+    # Only report differences from previous scan
+    diff_only: true
+    # State file location
+    state_file: .reconmaster_state.json
+  
+  # Export Options
+  export:
+    # Export to Burp Suite format
+    burp_suite: false
+    # Export to OWASP ZAP format
+    owasp_zap: false
+    # Export to SARIF format
+    sarif: false
+
+# ============================================================================
+# API KEYS (Optional - for enhanced scanning)
+# ============================================================================
+api_keys:
+  # Shodan API Key
+  shodan: ""
+  
+  # Censys API Credentials
+  censys:
+    api_id: ""
+    api_secret: ""
+  
+  # SecurityTrails API Key
+  securitytrails: ""
+  
+  # VirusTotal API Key
+  virustotal: ""
+  
+  # GitHub Token (for subdomain enumeration)
+  github: ""
+
+# ============================================================================
+# NOTES
+# ============================================================================
+# - Environment variables can override config values using RECON_ prefix
+#   Example: RECON_DOMAIN=example.com
+# - Relative paths are resolved from the config file location
+# - For security, consider using environment variables for sensitive data
+# - See documentation for advanced configuration options

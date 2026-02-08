@@ -1,0 +1,55 @@
+# ReconMaster Development Dependencies
+# Version: 3.1.0
+
+# Core dependencies (from requirements.txt)
+-r requirements.txt
+
+# Testing
+pytest>=7.4.0
+pytest-asyncio>=0.21.0
+pytest-cov>=4.1.0
+pytest-mock>=3.11.1
+pytest-timeout>=2.1.0
+
+# Code Quality
+flake8>=6.0.0
+black>=23.7.0
+isort>=5.12.0
+mypy>=1.4.1
+pylint>=2.17.5
+
+# Pre-commit Hooks
+pre-commit>=3.3.3
+
+# Documentation
+sphinx>=7.1.0
+sphinx-rtd-theme>=1.3.0
+myst-parser>=2.0.0
+
+# Type Stubs
+types-requests>=2.31.0
+types-PyYAML>=6.0.12
+
+# Development Tools
+ipython>=8.14.0
+ipdb>=0.13.13
+
+# Security Scanning
+bandit>=1.7.5
+safety>=2.3.5
+
+# Performance Profiling
+memory-profiler>=0.61.0
+py-spy>=0.3.14
+
+# Build Tools
+build>=0.10.0
+twine>=4.0.2
+wheel>=0.41.0
+
+# Linting
+autopep8>=2.0.4
+pydocstyle>=6.3.0
+
+# Coverage
+coverage[toml]>=7.3.0

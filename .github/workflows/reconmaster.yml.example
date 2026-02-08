@@ -1,0 +1,136 @@
+name: Daily Recon
+# This is an example workflow for automated daily reconnaissance
+# Copy this file to .github/workflows/reconmaster.yml and configure secrets
+
+on:
+  # Run daily at midnight UTC
+  schedule:
+    - cron: '0 0 * * *'
+  
+  # Allow manual trigger
+  workflow_dispatch:
+    inputs:
+      target:
+        description: 'Target domain to scan'
+        required: true
+        default: 'example.com'
+
+env:
+  PYTHON_VERSION: '3.9'
+
+jobs:
+  recon:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      
+      - name: Cache Python dependencies
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+      
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+      
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.21'
+      
+      - name: Cache Go modules
+        uses: actions/cache@v3
+        with:
+          path: ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+      
+      - name: Install reconnaissance tools
+        run: |
+          chmod +x scripts/install_tools.sh
+          ./scripts/install_tools.sh
+      
+      - name: Run ReconMaster
+        env:
+          TARGET_DOMAIN: ${{ secrets.RECON_DOMAIN || github.event.inputs.target }}
+          WEBHOOK_URL: ${{ secrets.WEBHOOK_URL }}
+        run: |
+          python reconmaster.py \
+            -d $TARGET_DOMAIN \
+            --daily \
+            --webhook $WEBHOOK_URL \
+            --i-understand-this-requires-authorization
+      
+      - name: Upload results
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: recon-results-${{ github.run_number }}
+          path: recon_results/
+          retention-days: 30
+      
+      - name: Generate summary
+        if: always()
+        run: |
+          echo "## Reconnaissance Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [ -f recon_results/*/summary.json ]; then
+            echo "### Statistics" >> $GITHUB_STEP_SUMMARY
+            cat recon_results/*/summary.json | jq -r '.statistics' >> $GITHUB_STEP_SUMMARY
+          fi
+      
+      - name: Notify on failure
+        if: failure()
+        env:
+          WEBHOOK_URL: ${{ secrets.WEBHOOK_URL }}
+        run: |
+          curl -X POST $WEBHOOK_URL \
+            -H "Content-Type: application/json" \
+            -d "{\"content\": \"❌ ReconMaster scan failed for ${{ secrets.RECON_DOMAIN }}\"}"
+
+  # Optional: Docker-based scan
+  docker-recon:
+    runs-on: ubuntu-latest
+    if: false  # Set to true to enable
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+      
+      - name: Build Docker image
+        run: docker build -t reconmaster:latest .
+      
+      - name: Run scan in Docker
+        env:
+          TARGET_DOMAIN: ${{ secrets.RECON_DOMAIN }}
+          WEBHOOK_URL: ${{ secrets.WEBHOOK_URL }}
+        run: |
+          docker run --rm \
+            -v ${{ github.workspace }}/results:/app/recon_results \
+            -e TARGET_DOMAIN=$TARGET_DOMAIN \
+            -e WEBHOOK_URL=$WEBHOOK_URL \
+            reconmaster:latest \
+            -d $TARGET_DOMAIN \
+            --daily \
+            --webhook $WEBHOOK_URL \
+            --i-understand-this-requires-authorization
+      
+      - name: Upload Docker results
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: docker-recon-results-${{ github.run_number }}
+          path: results/
+          retention-days: 30

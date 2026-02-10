@@ -150,7 +150,7 @@ jobs:
           esac
           
           # Run ReconMaster
-          python3 reconmaster_fixed.py \
+          python3 reconmaster.py \
             -d "${{ matrix.domain }}" \
             $FLAGS \
             --resume \

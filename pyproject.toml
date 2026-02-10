@@ -9,7 +9,7 @@ description = "Automated Reconnaissance Framework for Security Testing"
 readme = "README.md"
 license = {text = "MIT"}
 authors = [
-    {name = "VIPHACKER100", email = "contact@reconmaster.dev"},
+    {name = "VIPHACKER100 ( Aryan Ahirwar )", email = "VIPHACKER.100.ORG@GMAIL.COM"},
 ]
 keywords = [
     "reconnaissance",

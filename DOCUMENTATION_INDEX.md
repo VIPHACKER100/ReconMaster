@@ -10,12 +10,10 @@
 
 ### 1. Project Overview
 - **[README.md](README.md)**: Main entry point, features, and quick installation.
-- **[README_comprehensive.md](README_comprehensive.md)**: Deep dive into the v3.0 logic and tool orchestration.
 - **[CHANGELOG.md](CHANGELOG.md)**: Full history including the v3. Asynchronous Rewrite.
 
 ### 2. Getting Started
 - **[QUICKSTART.md](QUICKSTART.md)**: Command cheat-sheet for rapid scanning.
-- **[adv reconmaster.md](adv%20reconmaster.md)**: Detailed technical guide on advanced usage and tool pipelines.
 - **[PYPI_GUIDE.md](PYPI_GUIDE.md)**: Guide for installing via Python package managers.
 
 ### 3. Monitoring & Specialized Guides
@@ -53,5 +51,5 @@
 
 **Last Updated:** February 10, 2026  
 **Framework Version:** 3.1.0-Pro  
-**Maintained by:** VIPHACKER100  
+**Maintained by:** VIPHACKER100 ( Aryan Ahirwar )  
 **GitHub Repository:** [VIPHACKER100/ReconMaster](https://github.com/VIPHACKER100/ReconMaster)

@@ -378,7 +378,7 @@ Always explain why issue is closed.
 
 For maintainer questions or to volunteer:
 - Email: [viphacker.100.org@gmail.com]
-- GitHub: @VIPHACKER100
+- GitHub: @VIPHACKER100 ( Aryan Ahirwar )
 - Social Media: [@viphacker_100](https://instagram.com/viphacker_100)
 
 ---

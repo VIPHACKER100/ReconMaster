@@ -138,7 +138,9 @@ graph LR
 - **Scope Enforcement**: Strict domain and regex filtering across all modules
 - **Error Recovery**: Automatic retry with exponential backoff
 - **Resource Monitoring**: Real-time CPU, memory, and network tracking
-- **Unified Circuit Breaker**: Consistent failure thresholds (10 errors) across all high-velocity modules (JS, Sensitive Files, Discovery) to protect against WAF blocks
+- **Unified Circuit Breaker**: Consistent failure thresholds (10 errors) across all high-velocity modules (JS, Sensitive Files, Discovery, API Fuzzing) to protect against WAF blocks
+- **API Fuzzing Engine**: Specialized discovery of undocumented endpoints using `api_endpoints.txt`
+- **Sensitive Path Intelligence**: High-velocity scanning for `common.txt` and `quickhits.txt` assets
 
 ### 🔌 Extensibility & Automation
 
@@ -162,7 +164,8 @@ class CustomScanner(Plugin):
 - WordPress Scanner
 - Cloud Asset Discovery (AWS, GCP, Azure)
 - GraphQL Introspection
-- API Endpoint Discovery
+- API Endpoint Discovery (Hidden Routes)
+- Sensitive File Discovery (QuickHits)
 - Custom Template Engine
 
 </details>
@@ -1288,9 +1291,9 @@ If ReconMaster has helped you in your bug bounty journey or security research:
 
 [![Star on GitHub](https://img.shields.io/github/stars/VIPHACKER100/ReconMaster?style=social)](https://github.com/VIPHACKER100/ReconMaster)
 [![Sponsor](https://img.shields.io/badge/Sponsor-❤-EA4AAA?style=for-the-badge)](https://github.com/sponsors/VIPHACKER100)
-[![Buy Me A Coffee](https://img.shields.io/badge/Buy%20Me%20A%20Coffee-☕-FFDD00?style=for-the-badge)](https://buymeacoffee.com/viphacker100)
 
-**Developed with ❤️ by [VIPHACKER100](https://github.com/VIPHACKER100)**
+
+**Developed with ❤️ by [VIPHACKER100 ( Aryan Ahirwar )](https://github.com/VIPHACKER100)**
 
 </div>
 

@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
 """
 ReconMaster v3.1.0-Pro - Advanced Asynchronous Reconnaissance Framework
-Author: VIPHACKER100
+Author: VIPHACKER100 ( Aryan Ahirwar )
 License: MIT
 """
 
 __version__ = "3.1.0"
 VERSION = "3.1.0"
 PRO_VERSION = "3.1.0-Pro"
-AUTHOR = "VIPHACKER100"
+AUTHOR = "VIPHACKER100 ( Aryan Ahirwar )"
 GITHUB = "https://github.com/VIPHACKER100/ReconMaster"
 
 import os

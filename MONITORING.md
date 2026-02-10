@@ -1,6 +1,6 @@
-# 🔍 ReconMaster Monitoring System v3.0.0-Pro
+# 🔍 ReconMaster Monitoring System v3.1.0-Pro
 
-High-performance, automated reconnaissance monitoring with change detection and multi-channel alerting, powered by the **ReconMaster v3.0-Pro Asynchronous Core**.
+High-performance, automated reconnaissance monitoring with change detection and multi-channel alerting, powered by the **ReconMaster v3.1.0-Pro Asynchronous Core**.
 
 ## 🚀 Quick Start
 
@@ -107,3 +107,6 @@ scan_options:
 - [Main README](../README.md)
 - [Quick Start Guide](../QUICKSTART.md)
 - [VIPHACKER100 GitHub](https://github.com/VIPHACKER100)
+
+**Last Updated:** February 10, 2026  
+**Version:** 3.1.0-Pro

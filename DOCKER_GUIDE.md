@@ -20,7 +20,7 @@ ReconMaster can be deployed and run using Docker, providing:
 docker build -t reconmaster:latest .
 
 # Build with custom tag
-docker build -t reconmaster:3.0.0-Pro .
+docker build -t reconmaster:3.1.0-Pro .
 
 # Build without cache
 docker build --no-cache -t reconmaster:latest .
@@ -605,5 +605,5 @@ Start using Docker: `docker run reconmaster:latest --help`
 
 ---
 
-**Last Updated:** February 8, 2026  
-**Version:** 3.0.0-Pro
+**Last Updated:** February 10, 2026  
+**Version:** 3.1.0-Pro

@@ -4,16 +4,18 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [3.1.0-Pro] - 2026-02-08 - Elite Intelligence Upgrade (Current)
+## [3.1.0-Pro] - 2026-02-10 - Elite Intelligence & API Discovery (Current)
 
 ### Added
 - **AI Threat Profiler**: Heuristic intelligence engine for automated risk analysis and remediation advice.
 - **Regression Recon Engine**: State-aware diffing to identify new subdomains and vulnerabilities across scans.
+- **Hidden API Fuzzer**: Specialized module (`fuzz_api_endpoints`) using elite Pro wordlists to discover undocumented API routes.
+- **Expanded Asset Intelligence**: Integrated `api_endpoints.txt`, `common.txt`, and `quickhits.txt` specialized wordlists.
+- **Pro-Grade Discovery**: Enhanced `discover_sensitive_files` with high-velocity path scanning.
 - **Elite Reports**: Enhanced Markdown summaries with AI-driven threat profiles and regression alerts.
 - **Premium Branding**: New SVG-based animated logo and high-fidelity project assets.
 - **Windows Power-Up Installer**: Refactored PowerShell script for the full Pro toolset.
-- **Multi-Source Configuration**: Support for `RECON_TARGET`, `RECON_DOMAIN`, and `TARGET_DOMAIN` environment variables for flexible target specification.
-
+- **Multi-Source Configuration**: Support for `RECON_TARGET`, `RECON_DOMAIN`, and `TARGET_DOMAIN` environment variables.
 ### Fixed
 - **CI/CD Stabilization**: Removed legacy LinkFinder submodule/dependencies to resolve GitHub Actions checkout errors.
 - **Async Logic**: Fixed SyntaxError in sensitive file discovery module.

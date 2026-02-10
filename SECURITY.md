@@ -15,3 +15,5 @@ If you discover a security issue in ReconMaster itself, please report it respons
 3. Allow reasonable time for the author to address the issue before public disclosure.
 
 Thank you for helping keep ReconMaster secure!
+
+**Last Updated:** February 10, 2026

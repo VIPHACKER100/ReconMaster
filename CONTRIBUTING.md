@@ -171,7 +171,7 @@ python3 reconmaster.py --help
 
 ### Style Guide
 
-- **Python Version**: 3.8+
+- **Python Version**: 3.9+
 - **Style**: PEP 8 compliant
 - **Linting**: flake8
   ```bash
@@ -447,3 +447,5 @@ def validate_domain(domain: str) -> bool:
 Thank you for contributing to ReconMaster! Your efforts help make this tool better for everyone.
 
 **Questions?** Open an issue or reach out to the community!
+
+**Last Updated:** February 10, 2026

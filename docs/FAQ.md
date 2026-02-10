@@ -28,7 +28,7 @@
 
 ### Q: What are the system requirements?
 **A:** 
-- Python 3.7+
+- Python 3.9+
 - Go 1.16+ (for Go-based tools)
 - 4GB RAM (8GB recommended)
 - 20GB disk space (for wordlists and results)

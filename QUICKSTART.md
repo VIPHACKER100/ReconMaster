@@ -1,8 +1,8 @@
-# ReconMaster v3.0.0-Pro Quick Reference Guide
+# ReconMaster v3.1.0-Pro Quick Reference Guide
 
 ## 🚀 Pro Commands
 
-### ⚡ High-Speed Scanning (v3.0.0-Pro)
+### ⚡ High-Speed Scanning (v3.1.0-Pro)
 The new asynchronous engine allows for significantly higher thread counts and faster execution.
 
 ```powershell

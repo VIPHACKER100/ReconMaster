@@ -71,7 +71,7 @@ python3 reconmaster.py -d client.com -o ~/projects/client-security-audit
 **Directory structure created**:
 ```
 ~/projects/client-security-audit/
-└── client.com_20260201_143022/
+└── client.com_20260210_143022/
     ├── subdomains/
     ├── endpoints/
     ├── screenshots/

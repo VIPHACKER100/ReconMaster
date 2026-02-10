@@ -6,7 +6,7 @@ This guide helps diagnose and resolve common issues with ReconMaster.
 
 Before investigating specific issues, verify basics:
 
-1. **Python version**: `python3 --version` (require 3.7+)
+1. **Python version**: `python3 --version` (require 3.9+)
 2. **Internet connectivity**: `ping 8.8.8.8`
 3. **Disk space**: `df -h` (minimum 5GB recommended)
 4. **Memory**: `free -h` (minimum 2GB recommended)
@@ -576,6 +576,6 @@ df -h
 
 ---
 
-**Last Updated**: 2026-02-01
+**Last Updated**: 2026-02-10
 
 **Still stuck?** Create a detailed issue on GitHub with the information from "Getting Help" section above.

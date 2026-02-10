@@ -35,8 +35,8 @@ if requirements_file.exists():
 setup(
     name="reconmaster",
     version = "3.1.0",
-    author="VIPHACKER100",
-    author_email="contact@reconmaster.dev",
+    author="VIPHACKER100 ( Aryan Ahirwar )",
+    author_email="VIPHACKER.100.ORG@GMAIL.COM",
     description="Professional-Grade Automated Reconnaissance Framework",
     long_description=long_description,
     long_description_content_type="text/markdown",

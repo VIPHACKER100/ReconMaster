@@ -7,7 +7,7 @@ ReconMaster would not be possible without the contributions of the following peo
 ## Core Contributors
 
 ### Founders & Maintainers
-- **Your Name** - Project Lead, Core Development
+- **VIPHACKER100 ( Aryan Ahirwar )** - Project Lead, Core Development
   - Reconnaissance framework architecture
   - Tool integration and orchestration
   - Rate limiting implementation
@@ -145,7 +145,7 @@ Want to contribute? Have questions?
 
 ---
 
-**Last Updated:** February 1, 2026  
+**Last Updated:** February 10, 2026  
 **Total Contributors:** Growing! 👥
 
 ---

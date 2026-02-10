@@ -25,6 +25,22 @@ python monitor/scheduler.py -t target.com
 python monitor/scheduler.py --daemon
 ```
 
+### ⚙️ Configuration (Pro Feature)
+ReconMaster now supports `config.yaml` for persistent settings.
+```yaml
+scan:
+  threads: 20
+notifications:
+  webhook_url: "your_discord_webhook"
+```
+Place it in the root directory to be loaded automatically.
+
+### ☁️ CI/CD Automation
+Use the **Advanced Security Scan** workflow in GitHub Actions:
+1. Configure `AUTHORIZED_DOMAINS` secret.
+2. Manually trigger via **Actions** tab with target input.
+3. Review results in the **Job Summary** and **Artifacts**.
+
 ---
 
 ## 📁 Artifact Structure (New in v3.0)

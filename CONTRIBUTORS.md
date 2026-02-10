@@ -141,7 +141,7 @@ Want to contribute? Have questions?
 - Check [CONTRIBUTING.md](CONTRIBUTING.md)
 - Open an issue
 - Join GitHub Discussions
-- Contact [contributors@example.com]
+- Contact [VIPHACKER.100.ORG@GMAIL.COM](mailto:VIPHACKER.100.ORG@GMAIL.COM)
 
 ---
 

@@ -80,6 +80,13 @@ docker run -it \
   -v $(pwd)/results:/opt/reconmaster/results \
   reconmaster:latest \
   -d example.com
+
+# Mount configuration file
+docker run -it \
+  -v $(pwd)/config.yaml:/opt/reconmaster/config.yaml:ro \
+  -v $(pwd)/results:/opt/reconmaster/results \
+  reconmaster:latest \
+  -d example.com
 ```
 
 ### With Custom Parameters

@@ -11,6 +11,7 @@
 ### 1. Project Overview
 - **[README.md](README.md)**: Main entry point, features, and quick installation.
 - **[CHANGELOG.md](CHANGELOG.md)**: Full history including the v3. Asynchronous Rewrite.
+- **[.github/workflows/recon-security-scan.yml](.github/workflows/recon-security-scan.yml)**: Advanced CI/CD scan workflow.
 
 ### 2. Getting Started
 - **[QUICKSTART.md](QUICKSTART.md)**: Command cheat-sheet for rapid scanning.

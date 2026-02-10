@@ -535,6 +535,18 @@ sudo apt install openvpn
 openvpn --config config.ovpn
 ```
 
+### Issue: "CIRCUIT BREAKER OPEN" in logs
+**Symptoms**:
+- Scan stops or skips many targets
+- Log shows `🚫 CIRCUIT BREAKER OPENED`
+- Many `skipping JS request` warnings
+
+**Solutions**:
+1. **Wait for cooldown**: The circuit breaker typically resets after 60 seconds of inactivity.
+2. **Reduce concurrency**: If it happens frequently, decrease threads with `-t 5`.
+3. **Change IP**: Your current IP might be permanently flagged; try a rotating proxy or VPN.
+4. **Tune thresholds**: If you believe it's too sensitive, adjust `CIRCUIT_BREAKER_THRESHOLD` in `reconmaster.py`.
+
 ---
 
 ## Getting Help

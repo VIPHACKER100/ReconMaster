@@ -252,8 +252,19 @@ export RECONMASTER_THREADS=10
 export RECONMASTER_OUTPUT_DIR=~/reconmaster_results
 
 # Python
-RECONMASTER_RATE_LIMIT=5.0 reconmaster -d example.com
+RECONMASTER_THREADS=10 reconmaster -d example.com
+RECON_TARGET=target.com reconmaster
 ```
+
+### ⚙️ YAML Configuration Support
+Create `config.yaml` in your working directory to store persistent settings:
+```yaml
+scan:
+  threads: 20
+notifications:
+  webhook_url: "your_discord_webhook"
+```
+ReconMaster will automatically load this on startup. CLI flags will override these settings.
 
 ---
 

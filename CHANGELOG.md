@@ -16,17 +16,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - **Premium Branding**: New SVG-based animated logo and high-fidelity project assets.
 - **Windows Power-Up Installer**: Refactored PowerShell script for the full Pro toolset.
 - **Multi-Source Configuration**: Support for `RECON_TARGET`, `RECON_DOMAIN`, and `TARGET_DOMAIN` environment variables.
+- **Unified Circuit Breaker**: Introduced a robust `CircuitBreaker` class with state management (CLOSED, OPEN, HALF_OPEN) and cooldown periods.
+- **Sensitive Data Redaction**: Integrated `SensitiveFilter` to automatically redact API keys and tokens from all log files.
+- **Advanced Security Scan Workflow**: New GitHub Actions workflow (`recon-security-scan.yml`) with parallel matrix scanning and authorization checks.
+- **YAML Configuration Support**: Added `load_config()` to support `config.yaml` for persistent settings.
+- **Progress Tracking**: Real-time progress indicators for passive discovery tasks.
+
 ### Fixed
 - **CI/CD Stabilization**: Removed legacy LinkFinder submodule/dependencies to resolve GitHub Actions checkout errors.
 - **Async Logic**: Fixed SyntaxError in sensitive file discovery module.
 - **Dependency Map**: Unified `requirements.txt` with infrastructure and optional power-up libraries.
-- **Domain Validation**: Enhanced `validate_target` method with input sanitization (stripping whitespace/dots) and robust empty/single-dot detection.
-- **CLI UX**: Improved help messages and error reporting for target specification.
-- **Stability**: Fixed premature `handle_daily_diff` call in `main`; moved to post-scan phase for accurate regression analysis.
-- **Maintenance**: Ensured robust temporary file cleanup using `try/finally` blocks for gowitness and ffuf modules.
-- **Endpoint Analysis**: Improved JS endpoint filtering logic to reduce false positives from single characters and root paths.
-- **Reliability**: Unified circuit breaker thresholds across asynchronous scanning modules.
-- **Performance**: Removed redundant state loading on initialization.
+- **Domain Validation**: Enhanced `validate_target` method with input sanitization and security blocks for internal infrastructure.
+- **Command Injection Protection**: Implemented `_sanitize_header_value()` for shell metacharacter scrubbing.
+- **Path Traversal Prevention**: Strict `_safe_path()` utility for sandboxed file operations.
+- **Maintenance**: Ensured robust resource cleanup in active enumeration and HTTP modules.
+- **Endpoint Analysis**: Improved JS endpoint filtering logic to reduce false positives.
+- **Performance**: Optimized aiohttp sessions with better connection pooling and memory guards for JS analysis.
 
 ## [3.0.0-Pro] - 2026-02-08 - ReconMaster v3 Asynchronous Rewrite
 

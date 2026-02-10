@@ -272,6 +272,17 @@ grep -v "staging\|test\|dev" recon_results/target.com_*/subdomains/all_subdomain
 
 Or edit filtering logic in code.
 
+## Security & Data Protection (v3.1.0-Pro)
+
+### Q: Does ReconMaster expose my API keys in logs?
+**A:** No. ReconMaster v3.1.0-Pro includes a **Sensitive Data Filter** that automatically detects and redacts common API keys (Google, AWS, GitHub, etc.) and passwords before they are written to any log files.
+
+### Q: How safe is the automatic tool execution?
+**A:** Very safe. Every command is executed through a **sanitization layer** that prevents shell injection, and all file operations are protected by a **path resolution guard** to prevent path traversal vulnerabilities.
+
+### Q: What happens if I get rate-limited by a target?
+**A:** The **Circuit Breaker** module will detect consistent 403 or 429 errors and automatically enter a "Cooldown" state, pausing requests for that target to protect your IP reputation and allow the target's WAF to recover.
+
 ## Getting More Help
 
 - **Documentation**: See [README.md](../README.md)

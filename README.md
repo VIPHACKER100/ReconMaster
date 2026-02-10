@@ -241,6 +241,30 @@ python reconmaster.py -d target.com --export-zap
 
 </details>
 
+## ☁️ GitHub Actions Automation
+
+ReconMaster includes advanced GitHub Actions workflows for automated, scheduled, and triggered reconnaissance.
+
+### 🛡️ ReconMaster Advanced Security Scan
+The most powerful automated workflow, featuring:
+- **Authorization Verification**: Ensures scans only run on authorized targets.
+- **Scan Matrix**: Scan multiple domains concurrently.
+- **State Management**: Persists scan state across runs for delta analysis.
+- **Critical Findings Alerts**: Automatic identification of high-risk findings in GitHub Summary.
+- **Artifact Management**: Structured retention of summary reports and full assessment data.
+
+**Setup Instructions:**
+1. Go to repository **Settings > Secrets and variables > Actions**.
+2. Add the following secrets:
+   - `AUTHORIZED_DOMAINS`: Comma-separated list of domains you are authorized to scan (e.g., `example.com,test.com`).
+   - `WEBHOOK_URL`: (Optional) Discord/Slack webhook for notifications.
+3. (Recommended) Create an environment named `security-testing` and add required reviewers for critical scans.
+
+**Manual Trigger:**
+1. Navigate to the **Actions** tab in your repository.
+2. Select **ReconMaster Advanced Security Scan**.
+3. Click **Run workflow**, enter the target domain, and select the scan mode.
+
 ---
 
 ## 🚀 Quick Start

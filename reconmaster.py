@@ -24,7 +24,8 @@ import random
 import concurrent.futures
 import subprocess
 from datetime import datetime
-from typing import List, Set, Dict, Any, Optional
+from pathlib import Path
+from typing import List, Set, Dict, Any, Optional, Tuple, Union
 
 # Try to import aiohttp, fallback gracefully
 try:
@@ -38,6 +39,75 @@ except ImportError:
 HTTP_TIMEOUT = aiohttp.ClientTimeout(total=20) if _HAVE_AIOHTTP else None
 
 from utils import safe_run, merge_and_dedupe_text_files, find_wordlist
+
+class CircuitBreaker:
+    """Unified circuit breaker for all HTTP operations to prevent rate limiting and saturation"""
+    def __init__(self, threshold: int = 10, timeout: int = 60):
+        self.error_count = 0
+        self.threshold = threshold
+        self.state = "CLOSED"  # CLOSED, OPEN, HALF_OPEN
+        self.open_time = 0.0
+        self.timeout = timeout
+        self.lock = asyncio.Lock()
+    
+    async def record_error(self, status_code: int):
+        """Record failed request and potentially open the circuit"""
+        async with self.lock:
+            if status_code in [403, 429, 503]:
+                self.error_count += 1
+                logger.warning(f"Circuit breaker alert: {self.error_count}/{self.threshold} errors recorded.")
+                
+                if self.error_count >= self.threshold and self.state == "CLOSED":
+                    self.state = "OPEN"
+                    self.open_time = time.time()
+                    logger.error(f"🚫 CIRCUIT BREAKER OPENED - Rate limiting detected. Cooling down for {self.timeout}s.")
+                
+    async def record_success(self):
+        """Record successful request and recovery"""
+        async with self.lock:
+            if self.error_count > 0:
+                self.error_count = max(0, self.error_count - 1)
+            
+            if self.state == "HALF_OPEN":
+                self.state = "CLOSED"
+                logger.info("✅ Circuit breaker CLOSED - System recovered.")
+    
+    async def check_can_proceed(self) -> bool:
+        """Check if requests can proceed based on current state"""
+        async with self.lock:
+            if self.state == "CLOSED":
+                return True
+            
+            if self.state == "OPEN":
+                elapsed = time.time() - self.open_time
+                if elapsed > self.timeout:
+                    self.state = "HALF_OPEN"
+                    logger.info("🔌 Circuit breaker Entering HALF_OPEN - testing connectivity.")
+                    return True
+                return False
+            
+            # HALF_OPEN - allow requests but monitor closely
+            return True
+
+class SensitiveFilter(logging.Filter):
+    """Filter sensitive data (keys, tokens, passwords) from all log outputs"""
+    PATTERNS = [
+        (r'AIza[0-9A-Za-z-_]{35}', '[REDACTED_GOOGLE_API_KEY]'),
+        (r'AKIA[0-9A-Z]{16}', '[REDACTED_AWS_KEY]'),
+        (r'ghp_[A-Za-z0-9]{36}', '[REDACTED_GITHUB_TOKEN]'),
+        (r'xox[baprs]-[0-9a-zA-Z]{10,48}', '[REDACTED_SLACK_TOKEN]'),
+        (r'sk_live_[0-9a-zA-Z]{24}', '[REDACTED_STRIPE_KEY]'),
+        (r'password["\']?\s*[:=]\s*["\']?([^"\'\s]+)', 'password=[REDACTED]'),
+        (r'api[_-]?key["\']?\s*[:=]\s*["\']?([A-Za-z0-9_-]{20,})', 'api_key=[REDACTED]'),
+    ]
+    
+    def filter(self, record):
+        if hasattr(record, 'msg'):
+            msg = str(record.msg)
+            for pattern, replacement in self.PATTERNS:
+                msg = re.sub(pattern, replacement, msg, flags=re.IGNORECASE)
+            record.msg = msg
+        return True
 
 # Fix encoding for Windows consoles
 if sys.platform == "win32":
@@ -83,6 +153,16 @@ def print_banner():
     print(banner)
 
 class ReconMaster:
+    # --- Configuration Constants ---
+    MAX_JS_FILES = 100
+    MAX_JS_FILES_DAILY = 30
+    MAX_SENSITIVE_PATHS = 100
+    CHUNK_SIZE_FFUF = 5000
+    SCREENSHOT_CHUNK_SIZE = 20
+    MAX_FILE_SIZE_MB = 5
+    CIRCUIT_BREAKER_THRESHOLD = 10
+    CIRCUIT_BREAKER_COOLDOWN = 60
+
     def __init__(self, target: str, output_dir: str, threads: int = 10, wordlist: Optional[str] = None):
         self.target = target
         self.timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
@@ -139,6 +219,7 @@ class ReconMaster:
         # Initialize semaphore for concurrency control
         self.semaphore = asyncio.Semaphore(self.threads)
         self.screenshot_semaphore = asyncio.Semaphore(3)  # Limit parallel screenshots
+        self.circuit_breaker = CircuitBreaker(threshold=self.CIRCUIT_BREAKER_THRESHOLD, timeout=self.CIRCUIT_BREAKER_COOLDOWN)
 
         # Persistence & Regression
         self.state_file = os.path.join(output_dir, f"{target}_state.json")
@@ -147,44 +228,125 @@ class ReconMaster:
         # Create directory structure
         self._setup_dirs()
         self._load_state()
+        self.load_config()
+
+    def load_config(self, config_file: Optional[str] = None):
+        """Load configuration from YAML file and apply to current instance"""
+        if not config_file:
+            config_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config.yaml")
+        
+        if not os.path.exists(config_file):
+            return
+            
+        try:
+            # Lazy import yaml to avoid strict dependency
+            import yaml
+            with open(config_file, 'r') as f:
+                config = yaml.safe_load(f)
+            
+            if not config: return
+
+            # Apply scan settings
+            scan_cfg = config.get('scan', {})
+            self.threads = scan_cfg.get('threads', self.threads)
+            
+            # Apply notification settings
+            notif_cfg = config.get('notifications', {})
+            if not self.webhook_url: # CLI takes precedence
+                self.webhook_url = notif_cfg.get('webhook_url')
+                
+            logger.info(f"Loaded configuration from {config_file}")
+        except Exception as e:
+            logger.warning(f"Failed to load config file: {e}")
 
         # Configure file logging
         self._setup_logging()
+
+    def _sanitize_header_value(self, value: str) -> str:
+        """Sanitize header values to prevent multi-line or shell injection in potential log/shell scenarios"""
+        dangerous = [';', '&', '|', '$', '`', '(', ')', '<', '>', '\n', '\r', '"', "'"]
+        sanitized = value
+        for char in dangerous:
+            sanitized = sanitized.replace(char, '')
+        return sanitized
+
+    def _safe_path(self, directory_key: str, filename: str) -> str:
+        """Safely construct file path and strictly prevent path traversal"""
+        if directory_key not in self.dirs:
+            raise ValueError(f"Invalid directory key: {directory_key}")
+            
+        base_dir = Path(self.dirs[directory_key]).resolve()
+        # Sanitize filename to prevent basic directory navigation
+        clean_filename = os.path.basename(filename)
+        target_path = (base_dir / clean_filename).resolve()
+        
+        # Ensure target is strictly within the intended base directory
+        if not str(target_path).startswith(str(base_dir)):
+            logger.error(f"🛑 Path Traversal Violation Attempt: {filename} against {directory_key}")
+            raise ValueError(f"Security Violation: Path traversal detected for {filename}")
+        
+        return str(target_path)
 
     def _setup_logging(self):
         """Configure file handlers for the logger"""
         log_format = logging.Formatter('%(asctime)s [%(levelname)s] %(message)s')
         
+        # Apply Sensitive Filter to all handlers
+        sensitive_filter = SensitiveFilter()
+
         # Scan Log (INFO)
         scan_handler = logging.FileHandler(self.files["scan_log"])
         scan_handler.setLevel(logging.INFO)
         scan_handler.setFormatter(log_format)
+        scan_handler.addFilter(sensitive_filter)
         logger.addHandler(scan_handler)
         
         # Debug Log (DEBUG)
         debug_handler = logging.FileHandler(self.files["debug_log"])
         debug_handler.setLevel(logging.DEBUG)
         debug_handler.setFormatter(log_format)
+        debug_handler.addFilter(sensitive_filter)
         logger.addHandler(debug_handler)
         
         # Errors Log (ERROR)
         error_handler = logging.FileHandler(self.files["errors_log"])
         error_handler.setLevel(logging.ERROR)
         error_handler.setFormatter(log_format)
+        error_handler.addFilter(sensitive_filter)
         logger.addHandler(error_handler)
 
     def validate_target(self):
-        """Strict domain validation with sanitization"""
+        """Enhanced domain validation with strict RFC and security checks"""
         # Sanitize input
         self.target = self.target.strip().rstrip('.')
         
         # Check for empty or invalid input
         if not self.target or self.target in ['.', '..', '']:
-            raise ValueError("Invalid domain format: Target cannot be empty. Please provide a valid FQDN (e.g., example.com).")
-        
+            raise ValueError("Invalid domain format: Target cannot be empty.")
+            
+        # RFC 1035: Check length constraints
+        if len(self.target) > 253:
+            raise ValueError(f"Domain too long: {len(self.target)} characters (max 253)")
+            
+        # Check for invalid characters
+        if not re.match(r'^[a-zA-Z0-9.-]+$', self.target):
+            raise ValueError(f"Invalid characters in domain: {self.target}")
+            
         # Validate FQDN format
         if not re.fullmatch(r"(?:[a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}", self.target):
             raise ValueError(f"Invalid domain format: '{self.target}'. Please provide a valid FQDN (e.g., example.com).")
+
+        # Security: Prevent scanning of private infrastructure
+        private_patterns = [
+            r'^localhost', r'^127\.', r'^192\.168\.', r'^10\.', 
+            r'^172\.(1[6-9]|2[0-9]|3[0-1])\.', r'.*\.local$', r'.*\.internal$'
+        ]
+        for pattern in private_patterns:
+            if re.match(pattern, self.target, re.IGNORECASE):
+                logger.error(f"🛑 Security Block: Attempted scan of private/localhost target: {self.target}")
+                raise ValueError(f"Security Restriction: Cannot scan localhost or private infrastructure: {self.target}")
+
+        logger.info(f"✅ Target validated: {self.target}")
 
     def verify_tools(self):
         """Verify all required tools are resolved to absolute paths"""
@@ -200,9 +362,19 @@ class ReconMaster:
                 self.tool_paths[tool] = os.path.abspath(path)
 
         if missing_critical:
-            logger.error(f"Missing CRITICAL tools in PATH: {', '.join(missing_critical)}")
-            print(f"{Colors.RED}[!] Error: The following critical tools are missing: {', '.join(missing_critical)}{Colors.ENDC}")
-            print(f"{Colors.YELLOW}[*] Please install them or ensure they are in your system PATH/local bin.{Colors.ENDC}")
+            logger.error(f"Missing CRITICAL tools: {', '.join(missing_critical)}")
+            print(f"\n{Colors.RED}╔══════════════════════════════════════════════════╗")
+            print(f"║  ⚠️  MISSING CRITICAL TOOLS                     ║")
+            print(f"╚══════════════════════════════════════════════════╝{Colors.ENDC}\n")
+            
+            print(f"{Colors.YELLOW}The following tools are required but not found in your PATH:{Colors.ENDC}")
+            for tool in missing_critical:
+                print(f"  ❌ {tool}")
+            
+            print(f"\n{Colors.CYAN}Installation Instructions:{Colors.ENDC}")
+            print(f"  Run the installer: './install_reconmaster.sh' (Linux/macOS)")
+            print(f"  Or: 'powershell -File install_tools_final.ps1' (Windows)")
+            print(f"  Alternatively, install via go: 'go install github.com/projectdiscovery/{{tool}}@latest'\n")
             sys.exit(1)
 
         for tool in optional_tools:
@@ -277,9 +449,10 @@ class ReconMaster:
         }
         logger.info(f"Initialized project structure at {self.output_dir}")
 
-    async def _run_command(self, cmd: List[str], timeout: int = 300) -> tuple:
-        """Execute command asynchronously with robust User-Agent injection policy"""
-        ua = random.choice(self.user_agents)
+    async def _run_command(self, cmd: List[str], timeout: int = 300) -> Tuple[str, str, int]:
+        """Execute command asynchronously with robust security and timeout policy"""
+        raw_ua = random.choice(self.user_agents)
+        ua = self._sanitize_header_value(raw_ua)
         processed_cmd = list(cmd)
         tool_name = processed_cmd[0].lower()
 
@@ -302,21 +475,55 @@ class ReconMaster:
             print(f"{Colors.YELLOW}[DRY-RUN] Would execute: {' '.join(processed_cmd)}{Colors.ENDC}")
             return "", "", 0
 
-        loop = asyncio.get_running_loop()
-        async with self.semaphore:
-            stdout, stderr, rc = await loop.run_in_executor(
-                None, safe_run, processed_cmd, timeout
-            )
-        return stdout, stderr, rc
+        try:
+            # Add top-level async timeout for safety
+            async with asyncio.timeout(timeout + 5):
+                loop = asyncio.get_running_loop()
+                async with self.semaphore:
+                    stdout, stderr, rc = await loop.run_in_executor(
+                        None, safe_run, processed_cmd, timeout
+                    )
+            return stdout, stderr, rc
+        except asyncio.TimeoutError:
+            logger.error(f"Command timed out after {timeout}s: {tool_name}")
+            return "", "Execution Timeout", -1
+        except Exception as e:
+            logger.error(f"Command execution error: {e}")
+            return "", str(e), -1
 
-    async def _send_notification(self, message: str):
-        """Send notification via Discord/Slack Webhook with safety guard"""
+    async def _send_notification(self, message: str, severity: str = "info"):
+        """Send notification via Discord/Slack Webhook with severity handling"""
         if not self.webhook_url or not _HAVE_AIOHTTP:
             if not _HAVE_AIOHTTP and self.webhook_url:
                 logger.warning("aiohttp not available, skipping webhook notification.")
             return
 
-        payload = {"content" if "discord.com" in self.webhook_url else "text": f"[ReconMaster] {message}"}
+        # Severity Colors for Discord (decimal)
+        colors = {
+            "critical": 15158332,  # Red
+            "warning": 16776960,   # Yellow
+            "info": 3447003,       # Blue
+            "success": 3066993     # Green
+        }
+        color = colors.get(severity, colors["info"])
+
+        if "discord.com" in self.webhook_url:
+            payload = {
+                "embeds": [{
+                    "title": "🛰️ ReconMaster Alert",
+                    "description": message,
+                    "color": color,
+                    "fields": [
+                        {"name": "Target", "value": self.target, "inline": True},
+                        {"name": "Severity", "value": severity.upper(), "inline": True}
+                    ],
+                    "footer": {"text": f"ReconMaster {PRO_VERSION}"},
+                    "timestamp": datetime.now().isoformat()
+                }]
+            }
+        else:
+            payload = {"text": f"[{severity.upper()}] [ReconMaster] {message}"}
+
         try:
             headers = {"User-Agent": random.choice(self.user_agents)}
             connector = aiohttp.TCPConnector(ssl=False)
@@ -338,10 +545,21 @@ class ReconMaster:
 
         print(f"{Colors.BLUE}[*] Starting passive subdomain enumeration...{Colors.ENDC}")
 
+        completed = 0
+        total_tasks = 3
+        
+        async def run_with_tracking(coro, name):
+            nonlocal completed
+            res = await coro
+            completed += 1
+            progress = (completed / total_tasks) * 100
+            print(f"{Colors.CYAN}[{progress:.0f}%] Completed passive task: {name}{Colors.ENDC}")
+            return res
+
         tasks = [
-            self._run_command(["subfinder", "-d", self.target, "-o", self.files["subfinder"], "-silent"]),
-            self._run_command(["assetfinder", "--subs-only", self.target]),
-            self._run_command(["amass", "enum", "-passive", "-d", self.target, "-o", self.files["amass"]], timeout=600)
+            run_with_tracking(self._run_command(["subfinder", "-d", self.target, "-o", self.files["subfinder"], "-silent"]), "Subfinder"),
+            run_with_tracking(self._run_command(["assetfinder", "--subs-only", self.target]), "Assetfinder"),
+            run_with_tracking(self._run_command(["amass", "enum", "-passive", "-d", self.target, "-o", self.files["amass"]], timeout=600), "Amass")
         ]
 
         results = await asyncio.gather(*tasks)
@@ -378,51 +596,58 @@ class ReconMaster:
         ffuf_out = os.path.join(self.dirs["subdomains"], "ffuf_raw.json")
 
         # Wordlist chunking for efficiency and resolver safety (simple chunking by lines)
-        chunk_size = 5000
+        chunk_size = self.CHUNK_SIZE_FFUF
         with open(self.wordlist, "r") as f:
             lines = f.readlines()
 
-        for i in range(0, len(lines), chunk_size):
-            chunk = lines[i:i + chunk_size]
-            temp_chunk_file = os.path.join(self.dirs["subdomains"], f"chunk_{i}.txt")
-            ffuf_raw = ffuf_out + f"_{i}.json"
-            
-            try:
-                with open(temp_chunk_file, "w") as tf:
-                    tf.writelines(chunk)
+        temp_files_to_clean = []
+        try:
+            for i in range(0, len(lines), chunk_size):
+                chunk = lines[i:i + chunk_size]
+                temp_chunk_file = os.path.join(self.dirs["subdomains"], f"chunk_{i}.txt")
+                ffuf_raw = ffuf_out + f"_{i}.json"
+                temp_files_to_clean.extend([temp_chunk_file, ffuf_raw])
+                
+                try:
+                    with open(temp_chunk_file, "w") as tf:
+                        tf.writelines(chunk)
 
-                print(f"{Colors.CYAN}[-Chunk] Fuzzing chunk {i//chunk_size + 1}/{(len(lines)//chunk_size)+1}...{Colors.ENDC}")
+                    print(f"{Colors.CYAN}[-Chunk] Fuzzing chunk {i//chunk_size + 1}/{(len(lines)//chunk_size)+1}...{Colors.ENDC}")
 
-                cmd = [
-                    "ffuf",
-                    "-u", f"http://FUZZ.{self.target}",
-                    "-w", temp_chunk_file,
-                    "-of", "json",
-                    "-o", ffuf_raw,
-                    "-s",
-                    "-t", "30",
-                    "-rate", "75"  # Safer defaults for stability
-                ]
-                await self._run_command(cmd, timeout=300)
+                    cmd = [
+                        "ffuf",
+                        "-u", f"http://FUZZ.{self.target}",
+                        "-w", temp_chunk_file,
+                        "-of", "json",
+                        "-o", ffuf_raw,
+                        "-s",
+                        "-t", "30",
+                        "-rate", "75"  # Safer defaults for stability
+                    ]
+                    await self._run_command(cmd, timeout=300)
 
-                # Parse chunk results
-                if os.path.exists(ffuf_raw):
-                    try:
-                        with open(ffuf_raw, "r") as f_json:
-                            data = json.load(f_json)
-                            for result in data.get("results", []):
-                                sub = f"{result['input']['FUZZ']}.{self.target}"
-                                # Scope Enforcement
-                                if self._is_in_scope(sub):
-                                    self.subdomains.add(sub)
-                    except Exception as e:
-                        logger.error(f"Error parsing ffuf chunk: {e}")
-                    finally:
-                        if os.path.exists(ffuf_raw):
-                            os.remove(ffuf_raw)
-            finally:
-                if os.path.exists(temp_chunk_file):
-                    os.remove(temp_chunk_file)
+                    # Parse chunk results
+                    if os.path.exists(ffuf_raw):
+                        try:
+                            with open(ffuf_raw, "r") as f_json:
+                                data = json.load(f_json)
+                                for result in data.get("results", []):
+                                    sub = f"{result['input']['FUZZ']}.{self.target}"
+                                    # Scope Enforcement
+                                    if self._is_in_scope(sub):
+                                        self.subdomains.add(sub)
+                        except Exception as e:
+                            logger.error(f"Error parsing ffuf chunk: {e}")
+                except Exception as e:
+                    logger.error(f"Failed to process chunk {i}: {e}")
+        finally:
+            # CRITICAL: Comprehensive Resource Cleanup
+            for f_path in temp_files_to_clean:
+                try:
+                    if os.path.exists(f_path):
+                        os.remove(f_path)
+                except Exception as e:
+                    logger.warning(f"Cleanup failure for {f_path}: {e}")
 
         # Save all subdomains
         with open(self.files["all_subdomains"], "w", encoding="utf-8") as f:
@@ -717,20 +942,32 @@ class ReconMaster:
         headers = {"User-Agent": random.choice(self.user_agents)}
         connector = aiohttp.TCPConnector(ssl=False, limit=self.threads)
         async with aiohttp.ClientSession(timeout=HTTP_TIMEOUT, connector=connector, headers=headers) as session:
-            error_count = 0
-
+            
             async def scan_js(js_url):
-                nonlocal error_count
-                if error_count > 10:
-                    return js_url, []  # Circuit breaker
+                if not await self.circuit_breaker.check_can_proceed():
+                    logger.warning(f"Circuit breaker OPEN/COOLDOWN - skipping JS request: {js_url}")
+                    return js_url, []
 
                 try:
                     async with session.get(js_url, timeout=15) as resp:
-                        if resp.status in [403, 429]:
-                            error_count += 1
+                        if resp.status in [403, 429, 503]:
+                            await self.circuit_breaker.record_error(resp.status)
+                            return js_url, []
+                        
                         if resp.status == 200:
-                            error_count = 0  # Reset on success
+                            await self.circuit_breaker.record_success()
+                            
+                            # MEMORY OPTIMIZATION & PROTECTION
+                            content_length = resp.headers.get('Content-Length')
+                            if content_length and int(content_length) > self.MAX_FILE_SIZE_MB * 1024 * 1024:
+                                logger.warning(f"Skipping large JS file ({content_length} bytes): {js_url}")
+                                return js_url, []
+                                
                             content = await resp.text()
+                            if len(content) > self.MAX_FILE_SIZE_MB * 1024 * 1024:
+                                logger.warning(f"Truncating massive JS response: {js_url}")
+                                content = content[:self.MAX_FILE_SIZE_MB * 1024 * 1024]
+
                             findings = []
                             for name, pattern in regex_list.items():
                                 matches = re.findall(pattern, content)
@@ -747,14 +984,15 @@ class ReconMaster:
                                     if matches:
                                         findings.append((name, matches))
                             
-                            # Save per-file analysis
+                            # Save per-file analysis with security
                             safe_name = re.sub(r'[^a-zA-Z0-9]', '_', js_url.split('/')[-1])[:50]
-                            analysis_path = os.path.join(self.dirs["js_analysis"], f"{safe_name}_analysis.json")
+                            analysis_path = self._safe_path("js_analysis", f"{safe_name}_analysis.json")
                             with open(analysis_path, "w") as f:
                                 json.dump({"url": js_url, "findings": findings}, f, indent=4)
                                 
                             return js_url, findings
-                except Exception:
+                except Exception as e:
+                    logger.debug(f"JS scan failed for {js_url}: {e}")
                     return js_url, []
                 return js_url, []
 
@@ -869,25 +1107,24 @@ class ReconMaster:
                 except Exception as e:
                     logger.warning(f"Failed to load wordlist {wl}: {e}")
 
-        # Deduplicate and limit for safety (limit to 100 paths total to avoid noise)
-        sensitive_paths = list(dict.fromkeys(sensitive_paths))[:100]
+        # Deduplicate and limit for safety
+        sensitive_paths = list(dict.fromkeys(sensitive_paths))[:self.MAX_SENSITIVE_PATHS]
         
         # Explicitly configure sessions and connectors
         connector = aiohttp.TCPConnector(ssl=False, limit=10)
         async with aiohttp.ClientSession(timeout=HTTP_TIMEOUT, connector=connector) as session:
-            error_count = 0
 
             async def check_path(base_url, path):
-                nonlocal error_count
-                if error_count > 10:
+                if not await self.circuit_breaker.check_can_proceed():
                     return None
+                    
                 target = f"{base_url.rstrip('/')}/{path}"
                 try:
                     async with session.get(target, timeout=5, allow_redirects=False) as resp:
-                        if resp.status in [403, 429]:
-                            error_count += 1
+                        if resp.status in [403, 429, 503]:
+                            await self.circuit_breaker.record_error(resp.status)
                         if resp.status == 200:
-                            error_count = 0
+                            await self.circuit_breaker.record_success()
                             return target
                 except Exception:
                     pass
@@ -932,10 +1169,18 @@ class ReconMaster:
         connector = aiohttp.TCPConnector(ssl=False, limit=self.threads)
         async with aiohttp.ClientSession(timeout=HTTP_TIMEOUT, connector=connector) as session:
             async def check_api(base_url, path):
+                if not await self.circuit_breaker.check_can_proceed():
+                    return None
+                    
                 target = f"{base_url.rstrip('/')}/{path.lstrip('/')}"
                 try:
                     async with session.get(target, timeout=5) as resp:
+                        if resp.status in [403, 429, 503]:
+                            await self.circuit_breaker.record_error(resp.status)
+                            
                         if resp.status in [200, 201, 401, 403]: # Interested in access or restricted
+                            if resp.status == 200:
+                                await self.circuit_breaker.record_success()
                             return target, resp.status
                 except Exception:
                     pass
@@ -1108,8 +1353,11 @@ class ReconMaster:
                 if self.vulns:
                     f.write("### ⚠️ Key Findings\n")
                     for v in self.vulns[:20]:
-                        severity = v.get('info', {}).get('severity', 'UNKNOWN').upper()
-                        f.write(f"- **[{severity}]** {v.get('info', {}).get('name')} -> {v.get('matched-at')}\n")
+                        info = v.get('info', {}) or {}
+                        severity = str(info.get('severity', 'UNKNOWN')).upper()
+                        name = info.get('name', 'Unknown Finding')
+                        matched = v.get('matched-at', 'N/A')
+                        f.write(f"- **[{severity}]** {name} -> {matched}\n")
 
             f.write("\n## 🧠 AI Threat Analysis\n\n")
             if self.vulns:
@@ -1252,13 +1500,13 @@ async def run_recon(recon, args):
     start_time = time.time()
 
     # Discovery Phase
-    await recon._send_notification(f"🚀 Starting recon on {recon.target}")
+    await recon._send_notification(f"🚀 Starting recon on {recon.target}", "info")
     await recon.passive_subdomain_enum()
 
     if not args.passive_only:
         await recon.active_subdomain_enum()
 
-    await recon._send_notification(f"🔍 Discovery finished. Found {len(recon.subdomains)} subdomains.")
+    await recon._send_notification(f"🔍 Discovery finished. Found {len(recon.subdomains)} subdomains.", "info")
 
     # Analysis Phase
     await recon.resolve_live_hosts()
@@ -1294,7 +1542,7 @@ async def run_recon(recon, args):
     recon._save_state()
     recon.generate_report()
 
-    await recon._send_notification(f"✅ Recon complete for {recon.target}. Risk Score: {recon._calculate_risk_score()}/100")
+    await recon._send_notification(f"✅ Recon complete for {recon.target}. Risk Score: {recon._calculate_risk_score()}/100", "success")
 
     duration = time.time() - start_time
     print(f"\n{Colors.BOLD}{Colors.GREEN}[PRO] ReconMaster finished in {duration:.2f}s.{Colors.ENDC}")
@@ -1314,7 +1562,7 @@ def main():
                         type=str,
                         help="Target domain to scan (e.g., example.com)")
     parser.add_argument("-v", "--version", action="version", version=f"ReconMaster {VERSION}")
-    parser.add_argument("-o", "--output", default="./recon_results", help="Output directory")
+    parser.add_argument("-o", "--output", "--output-dir", default="./recon_results", help="Output directory")
     parser.add_argument("-t", "--threads", type=int, default=10, help="Concurrency limit")
     parser.add_argument("-w", "--wordlist", help="Custom wordlist path")
     parser.add_argument("--passive-only", action="store_true", help="Skip active/intrusive scans")

@@ -541,6 +541,28 @@ comm -23 \
 
 ---
 
+### Example 17: CI/CD Advanced Security Scan (v3.1.0-Pro)
+
+**Scenario**: Automated, matrix-based security assessment via GitHub Actions.
+
+**Setup**:
+1. Configure `AUTHORIZED_DOMAINS` secret (e.g., `corp.com,api.corp.com`).
+2. Configure `WEBHOOK_URL` for real-time Discord/Slack alerts.
+
+**Workflow Workflow**:
+- **Trigger**: Go to **Actions > ReconMaster Advanced Security Scan > Run Workflow**.
+- **Inputs**: Enter `target.com`, select mode `comprehensive`.
+
+**What happens**:
+- Workflow verifies authorization against the secret list.
+- Spins up a matrix of runners (max 2 parallel for OpSec).
+- Installs the full Go/Python toolchain with caching.
+- Executes `reconmaster.py` with the `--daily` and `--resume` flags.
+- Redacts sensitive data from logs before finishing.
+- Uploads job summaries with critical findings directly to the GitHub interface.
+
+---
+
 ## Best Practices Summary
 
 1. **Always verify authorization** before scanning

@@ -112,6 +112,11 @@ class SensitiveFilter(logging.Filter):
 # Fix encoding for Windows consoles
 if sys.platform == "win32":
     import io
+    try:
+        import colorama
+        colorama.init()
+    except ImportError:
+        pass
     if hasattr(sys.stdout, 'reconfigure'):
         sys.stdout.reconfigure(encoding='utf-8')
     else:
@@ -165,8 +170,9 @@ class ReconMaster:
 
     def __init__(self, target: str, output_dir: str, threads: int = 10, wordlist: Optional[str] = None):
         self.target = target
+        self.validate_target() # Sanitize and validate before path creation
         self.timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-        self.output_dir = os.path.join(output_dir, f"{target}_{self.timestamp}")
+        self.output_dir = os.path.join(output_dir, f"{self.target}_{self.timestamp}")
         self.threads = threads
         self.subdomains: Set[str] = set()
         self.live_domains: Set[str] = set()
@@ -222,7 +228,7 @@ class ReconMaster:
         self.circuit_breaker = CircuitBreaker(threshold=self.CIRCUIT_BREAKER_THRESHOLD, timeout=self.CIRCUIT_BREAKER_COOLDOWN)
 
         # Persistence & Regression
-        self.state_file = os.path.join(output_dir, f"{target}_state.json")
+        self.state_file = os.path.join(output_dir, f"{self.target}_state.json")
         self.new_findings = {"subdomains": [], "vulns": [], "ports": []}
 
         # Create directory structure
@@ -317,8 +323,18 @@ class ReconMaster:
 
     def validate_target(self):
         """Enhanced domain validation with strict RFC and security checks"""
-        # Sanitize input
+        # Sanitize input: strip whitespace and trailing dots
         self.target = self.target.strip().rstrip('.')
+        
+        # Strip protocol if present (e.g., https://example.com -> example.com)
+        if "://" in self.target:
+            self.target = self.target.split("://")[-1]
+            
+        # Strip trailing path if present (e.g., example.com/test -> example.com)
+        self.target = self.target.split("/")[0]
+
+        # Final strip for any stray whitespace
+        self.target = self.target.strip()
         
         # Check for empty or invalid input
         if not self.target or self.target in ['.', '..', '']:
@@ -601,45 +617,50 @@ class ReconMaster:
             lines = f.readlines()
 
         temp_files_to_clean = []
+        
+        async def process_chunk(index, chunk_lines):
+            temp_chunk_file = os.path.join(self.dirs["subdomains"], f"chunk_{index}.txt")
+            ffuf_raw = ffuf_out + f"_{index}.json"
+            
+            temp_files_to_clean.extend([temp_chunk_file, ffuf_raw])
+            try:
+                with open(temp_chunk_file, "w") as tf:
+                    tf.writelines(chunk_lines)
+
+                print(f"{Colors.CYAN}[-Chunk] Fuzzing chunk {index//chunk_size + 1}/{(len(lines)//chunk_size)+1}...{Colors.ENDC}")
+
+                cmd = [
+                    "ffuf",
+                    "-u", f"http://FUZZ.{self.target}",
+                    "-w", temp_chunk_file,
+                    "-of", "json",
+                    "-o", ffuf_raw,
+                    "-s",
+                    "-t", "30",
+                    "-rate", "75"
+                ]
+                await self._run_command(cmd, timeout=300)
+
+                # Parse chunk results
+                if os.path.exists(ffuf_raw):
+                    try:
+                        with open(ffuf_raw, "r") as f_json:
+                            data = json.load(f_json)
+                            for result in data.get("results", []):
+                                sub = f"{result['input']['FUZZ']}.{self.target}"
+                                if self._is_in_scope(sub):
+                                    self.subdomains.add(sub)
+                    except Exception as e:
+                        logger.error(f"Error parsing ffuf chunk {index}: {e}")
+            except Exception as e:
+                logger.error(f"Failed to process chunk {index}: {e}")
+
         try:
+            tasks = []
             for i in range(0, len(lines), chunk_size):
-                chunk = lines[i:i + chunk_size]
-                temp_chunk_file = os.path.join(self.dirs["subdomains"], f"chunk_{i}.txt")
-                ffuf_raw = ffuf_out + f"_{i}.json"
-                temp_files_to_clean.extend([temp_chunk_file, ffuf_raw])
-                
-                try:
-                    with open(temp_chunk_file, "w") as tf:
-                        tf.writelines(chunk)
-
-                    print(f"{Colors.CYAN}[-Chunk] Fuzzing chunk {i//chunk_size + 1}/{(len(lines)//chunk_size)+1}...{Colors.ENDC}")
-
-                    cmd = [
-                        "ffuf",
-                        "-u", f"http://FUZZ.{self.target}",
-                        "-w", temp_chunk_file,
-                        "-of", "json",
-                        "-o", ffuf_raw,
-                        "-s",
-                        "-t", "30",
-                        "-rate", "75"  # Safer defaults for stability
-                    ]
-                    await self._run_command(cmd, timeout=300)
-
-                    # Parse chunk results
-                    if os.path.exists(ffuf_raw):
-                        try:
-                            with open(ffuf_raw, "r") as f_json:
-                                data = json.load(f_json)
-                                for result in data.get("results", []):
-                                    sub = f"{result['input']['FUZZ']}.{self.target}"
-                                    # Scope Enforcement
-                                    if self._is_in_scope(sub):
-                                        self.subdomains.add(sub)
-                        except Exception as e:
-                            logger.error(f"Error parsing ffuf chunk: {e}")
-                except Exception as e:
-                    logger.error(f"Failed to process chunk {i}: {e}")
+                tasks.append(process_chunk(i, lines[i:i + chunk_size]))
+            
+            await asyncio.gather(*tasks)
         finally:
             # CRITICAL: Comprehensive Resource Cleanup
             for f_path in temp_files_to_clean:
@@ -1589,7 +1610,6 @@ def main():
             wordlist=args.wordlist
         )
 
-        recon.validate_target()
         recon.verify_tools()
 
         # Apply CLI args to recon instance

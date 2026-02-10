@@ -4,7 +4,18 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [3.1.0-Pro] - 2026-02-10 - Elite Intelligence & API Discovery (Current)
+## [3.2.0-Elite] - 2026-02-10
+### Added
+- **VIP SQLi Scanner**: Integrated a high-fidelity native SQL injection detection engine with heuristic analysis and Nuclei integration.
+- **Multi-Cloud Discovery**: New plugin for proactive AWS S3, Azure Blob, and GCP Storage asset probing.
+- **Premium Dashboard 2.0**: Interactive graphs using Chart.js for severity distribution and technology adoption.
+- **JIT Directory Resilience**: Improved engine stability with just-in-time directory creation for all write operations.
+
+### Fixed
+- GitHub Actions workflow syntax for secret-dependent jobs and steps.
+- Subdomain Takeover and Broken Link detection logic refinement.
+
+## [3.1.0-Pro] - 2026-02-10 - Elite Intelligence & API Discovery
 
 - **Elite Intelligence Integration**: Native support for **Censys**, **SecurityTrails**, and **VirusTotal** APIs to boost passive discovery yield.
 - **AI Threat Profiler**: Heuristic intelligence engine for automated risk analysis and remediation advice.

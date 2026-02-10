@@ -235,6 +235,12 @@ class ReconMaster:
         self.screenshot_semaphore = asyncio.Semaphore(3)  # Limit parallel screenshots
         self.circuit_breaker = CircuitBreaker(threshold=self.CIRCUIT_BREAKER_THRESHOLD, timeout=self.CIRCUIT_BREAKER_COOLDOWN)
 
+    def _ensure_dir(self, file_path: str):
+        """Ensure the parent directory for a given file path exists"""
+        directory = os.path.dirname(file_path)
+        if directory:
+            os.makedirs(directory, exist_ok=True)
+
         # Persistence & Regression
         self.state_file = os.path.join(output_dir, f"{self.target}_state.json")
         self.new_findings = {"subdomains": [], "vulns": [], "ports": []}
@@ -863,6 +869,7 @@ class ReconMaster:
                     if items:
                         file_key = f"vuln_{sev}"
                         if file_key in self.files:
+                            self._ensure_dir(self.files[file_key])
                             with open(self.files[file_key], "w") as sf:
                                 sf.write("\n".join(items) + "\n")
             except Exception as e:
@@ -944,6 +951,7 @@ class ReconMaster:
             if broken:
                 self.broken_links = broken
                 print(f"{Colors.YELLOW}[!] Found {len(broken)} broken social/external links!{Colors.ENDC}")
+                self._ensure_dir(self.files["broken_links"])
                 with open(self.files["broken_links"], "w") as f:
                     for link in broken:
                         f.write(link + "\n")
@@ -1465,15 +1473,33 @@ class ReconMaster:
         return min(score, 100)
 
     def _generate_premium_html_report(self, duration, end_dt):
-        """Generate high-fidelity premium HTML report"""
+        """Generate high-fidelity premium HTML report with interactive visualizations"""
+        
+        # Prepare data for charts
+        severity_counts = {
+            "critical": len([v for v in self.vulns if v.get("info", {}).get("severity") == "critical"]),
+            "high": len([v for v in self.vulns if v.get("info", {}).get("severity") == "high"]),
+            "medium": len([v for v in self.vulns if v.get("info", {}).get("severity") == "medium"]),
+            "low": len([v for v in self.vulns if v.get("info", {}).get("severity") == "low"]),
+            "info": len([v for v in self.vulns if v.get("info", {}).get("severity") == "info"]),
+        }
+
+        # Calculate technology distribution
+        tech_dist = {}
+        for techs in self.tech_stack.values():
+            for t in techs:
+                tech_dist[t] = tech_dist.get(t, 0) + 1
+        top_techs = dict(sorted(tech_dist.items(), key=lambda x: x[1], reverse=True)[:10])
+
         html_template = f"""
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ReconMaster Elite Report - {{self.target}}</title>
+    <title>ReconMaster Elite v3.2 - {self.target}</title>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         :root {{
             --bg: #0b0f1a;
@@ -1489,7 +1515,7 @@ class ReconMaster:
             --info: #3b82f6;
         }}
         
-        * {{ box-sizing: border-box; transition: all 0.2s ease-in-out; }}
+        * {{ box-sizing: border-box; transition: all 0.2s ease-in-out; scroll-behavior: smooth; }}
         body {{ 
             font-family: 'Outfit', sans-serif; 
             background: var(--bg); 
@@ -1510,6 +1536,7 @@ class ReconMaster:
             position: sticky;
             top: 0;
             height: 100vh;
+            z-index: 100;
         }}
 
         .logo {{ font-size: 1.5rem; font-weight: 700; color: var(--accent); letter-spacing: -1px; }}
@@ -1524,17 +1551,17 @@ class ReconMaster:
         }}
         nav a:hover, nav a.active {{ background: #1e293b; color: var(--accent); }}
 
-        main {{ flex: 1; padding: 3rem; overflow-y: auto; }}
+        main {{ flex: 1; padding: 3rem; overflow-y: auto; max-width: 1200px; margin: 0 auto; }}
         
         .header {{ margin-bottom: 3rem; }}
-        .header h1 {{ font-size: 2.5rem; margin: 0; font-weight: 700; }}
+        .header h1 {{ font-size: 2.5rem; margin: 0; font-weight: 700; background: linear-gradient(90deg, #fff, var(--accent)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }}
         .header p {{ color: var(--text-dim); margin-top: 0.5rem; }}
 
         .stats-grid {{ 
             display: grid; 
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); 
             gap: 1.5rem; 
-            margin-bottom: 3rem; 
+            margin-bottom: 2rem; 
         }}
         
         .stat-card {{ 
@@ -1544,9 +1571,25 @@ class ReconMaster:
             border-radius: 16px; 
             border: 1px solid rgba(255,255,255,0.05);
             text-align: left;
+            position: relative;
+            overflow: hidden;
         }}
+        .stat-card::after {{ content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 4px; background: var(--accent); opacity: 0.3; }}
+        .stat-card.critical::after {{ background: var(--critical); opacity: 1; }}
+
         .stat-card .label {{ color: var(--text-dim); font-size: 0.875rem; text-transform: uppercase; letter-spacing: 1px; }}
         .stat-card .value {{ font-size: 2rem; font-weight: 700; margin-top: 0.5rem; color: var(--accent); }}
+
+        .chart-container {{
+            background: var(--card);
+            padding: 2rem;
+            border-radius: 20px;
+            margin-bottom: 3rem;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+        }}
+        .chart-box {{ min-width: 0; height: 350px; }}
 
         .severity-pill {{
             padding: 0.25rem 0.75rem;
@@ -1560,7 +1603,7 @@ class ReconMaster:
         .bg-medium {{ background: rgba(234, 179, 8, 0.15); color: var(--medium); }}
         .bg-low {{ background: rgba(34, 197, 94, 0.15); color: var(--low); }}
 
-        section {{ margin-bottom: 4rem; }}
+        section {{ margin-bottom: 4rem; scroll-margin-top: 3rem; }}
         section h2 {{ font-size: 1.5rem; margin-bottom: 1.5rem; border-left: 4px solid var(--accent); padding-left: 1rem; }}
 
         .finding-item {{
@@ -1573,27 +1616,31 @@ class ReconMaster:
             justify-content: space-between;
             align-items: center;
         }}
-        .finding-item:hover {{ border-color: var(--accent); background: #1e293b; }}
+        .finding-item:hover {{ border-color: var(--accent); background: #1e293b; transform: translateX(5px); }}
         
         .search-box {{
             width: 100%;
             padding: 1rem;
             background: #111827;
             border: 1px solid #374151;
-            border-radius: 8px;
+            border-radius: 12px;
             color: white;
             margin-bottom: 2rem;
             font-size: 1rem;
+            outline: none;
         }}
+        .search-box:focus {{ border-color: var(--accent); }}
 
         .tech-tag {{
             display: inline-block;
             background: #1e293b;
-            padding: 2px 8px;
-            border-radius: 4px;
+            padding: 4px 12px;
+            border-radius: 6px;
             font-size: 0.75rem;
-            margin-right: 4px;
+            margin-right: 6px;
+            margin-bottom: 6px;
             color: var(--accent);
+            border: 1px solid rgba(56, 189, 248, 0.1);
         }}
 
         @keyframes fadeIn {{ from {{ opacity: 0; transform: translateY(10px); }} to {{ opacity: 1; transform: translateY(0); }} }}
@@ -1602,56 +1649,67 @@ class ReconMaster:
 </head>
 <body>
     <sidebar>
-        <div class="logo">ReconMaster Pro</div>
+        <div class="logo">ReconMaster Elite</div>
         <nav>
-            <a href="#overview" class="active">Dashboard Overview</a>
-            <a href="#vulnerabilities">Security Findings</a>
-            <a href="#assets">Discovered Assets</a>
-            <a href="#technologies">Technology Stack</a>
+            <a href="#overview" class="active">Overview</a>
+            <a href="#vulnerabilities">Findings</a>
+            <a href="#assets">Assets</a>
+            <a href="#technologies">Tech Stack</a>
             <a href="#ai-insights">AI Intelligence</a>
         </nav>
         <div style="margin-top: auto; font-size: 0.75rem; color: var(--text-dim);">
-            Target: {{self.target}}<br>
-            Version: {{PRO_VERSION}}
+            Target: {self.target}<br>
+            Elite v3.2.0 • Pro Edition
         </div>
     </sidebar>
 
     <main>
         <div class="header animate">
-            <p>CONSOLIDATED ASSESSMENT REPORT</p>
-            <h1>{{self.target}}</h1>
-            <p>Scan completed in {{duration}} | Generated at {{end_dt.strftime("%Y-%m-%d %H:%M:%S")}}</p>
+            <p>ADVANCED OFFENSIVE SECURITY ASSESSMENT</p>
+            <h1>{self.target}</h1>
+            <p>Duration: {duration} | Assessment Date: {end_dt.strftime("%Y-%m-%d %H:%M:%S")}</p>
         </div>
 
         <div class="stats-grid animate" style="animation-delay: 0.1s">
             <div class="stat-card">
-                <div class="label">Risk Score</div>
-                <div class="value">{{self._calculate_risk_score()}}/100</div>
+                <div class="label">Overall Risk Score</div>
+                <div class="value">{self._calculate_risk_score()}/100</div>
             </div>
             <div class="stat-card">
                 <div class="label">Total Subdomains</div>
-                <div class="value">{{len(self.subdomains)}}</div>
+                <div class="value">{len(self.subdomains)}</div>
             </div>
             <div class="stat-card">
-                <div class="label">Live Web Hosts</div>
-                <div class="value">{{len(self.live_domains)}}</div>
+                <div class="label">Endpoints Analyzed</div>
+                <div class="value">{len(self.urls)}</div>
             </div>
-            <div class="stat-card">
-                <div class="label">Vulnerabilities</div>
-                <div class="value" style="color: var(--critical)">{{len(self.vulns)}}</div>
+            <div class="stat-card critical">
+                <div class="label">Vulnerabilities Identified</div>
+                <div class="value" style="color: var(--critical)">{len(self.vulns)}</div>
+            </div>
+        </div>
+
+        <div class="chart-container animate" style="animation-delay: 0.15s">
+            <div class="chart-box">
+                <canvas id="severityChart"></canvas>
+            </div>
+            <div class="chart-box">
+                <canvas id="techChart"></canvas>
             </div>
         </div>
 
         <section id="vulnerabilities" class="animate" style="animation-delay: 0.2s">
             <h2>Security Findings</h2>
-            <input type="text" class="search-box" placeholder="Filter vulnerabilities by target or name..." onkeyup="filterSection('vuln-list', this.value)">
+            <input type="text" class="search-box" placeholder="Filter by endpoint, vulnerability name, or severity..." onkeyup="filterSection('vuln-list', this.value)">
             <div id="vuln-list">
                 {"".join([f'''
                 <div class="finding-item">
                     <div>
-                        <span class="severity-pill bg-{{v.get('info', {{}}).get('severity', 'info').lower() if v.get('info') else 'info'}}">{{v.get('info', {{}}).get('severity', 'info') if v.get('info') else 'INFO'}}</span>
-                        <strong style="margin-left: 10px;">{{v.get('info', {{}}).get('name', 'Discovery') if v.get('info') else 'Discovery'}}</strong>
-                        <div style="color: var(--text-dim); margin-top: 5px; font-size: 0.9rem;">{{v.get('matched-at', 'N/A')}}</div>
+                        <span class="severity-pill bg-{v.get('info', {{}}).get('severity', 'info').lower() if v.get('info') else 'info'}">{v.get('info', {{}}).get('severity', 'info') if v.get('info') else 'INFO'}</span>
+                        <strong style="margin-left: 10px;">{v.get('info', {{}}).get('name', 'Discovery') if v.get('info') else 'Discovery'}</strong>
+                        <div style="color: var(--text-dim); margin-top: 8px; font-size: 0.9rem;">
+                            <code style="background: rgba(0,0,0,0.3); padding: 2px 5px; border-radius: 4px;">{v.get('matched-at', 'N/A')}</code>
+                        </div>
                     </div>
                 </div>
                 ''' for v in self.vulns]) if self.vulns else "<p>No vulnerabilities identified.</p>"}
@@ -1659,34 +1717,88 @@ class ReconMaster:
         </section>
 
         <section id="ai-insights" class="animate" style="animation-delay: 0.3s">
-            <h2>AI Intelligence Engine</h2>
-            <div style="display: grid; gap: 1rem;">
+            <h2>AI Intelligence Hub</h2>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem;">
                 {"".join([f'''
-                <div class="stat-card" style="text-align: left; border-left: 4px solid var(--accent);">
-                    <div style="font-weight: 600; margin-bottom: 8px;">Analysis for: {{v.get('info', {{}}).get('name') if v.get('info') else 'Finding'}}</div>
-                    <div style="color: var(--text-dim); font-size: 0.95rem; line-height: 1.5;">{{self._generate_ai_profile(v)}}</div>
-                    <div style="margin-top: 10px; font-size: 0.8rem; opacity: 0.7;">Target: {{v.get('matched-at')}}</div>
+                <div class="stat-card" style="border-left: 4px solid var(--accent);">
+                    <div style="font-weight: 700; margin-bottom: 12px; font-size: 1.1rem; color: var(--accent);">Intelligence: {v.get('info', {{}}).get('name') if v.get('info') else 'Finding'}</div>
+                    <div style="color: var(--text-dim); font-size: 0.95rem; line-height: 1.6;">{self._generate_ai_profile(v)}</div>
+                    <div style="margin-top: 15px; font-size: 0.8rem; opacity: 0.6; display: flex; align-items: center; gap: 5px;">
+                        <span>🔗</span> {v.get('matched-at')}
+                    </div>
                 </div>
-                ''' for v in self.vulns[:5]]) if self.vulns else "<p>Insufficient data for AI profiling.</p>"}
+                ''' for v in self.vulns[:6]]) if self.vulns else "<p>Insufficient data for intelligence profiling.</p>"}
             </div>
         </section>
 
         <section id="technologies" class="animate" style="animation-delay: 0.4s">
-            <h2>Asset Fingerprinting</h2>
-            {"".join([f'''
-            <div class="finding-item">
-                <div>
-                    <strong>{{url}}</strong>
-                    <div style="margin-top: 5px;">
-                        {{ "".join([f'<span class="tech-tag">{{t}}</span>' for t in t_list]) }}
+            <h2>Technology Fingerprints</h2>
+            <div id="tech-list" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 1rem;">
+                {"".join([f'''
+                <div class="finding-item">
+                    <div style="width: 100%;">
+                        <div style="font-weight: 600; margin-bottom: 10px; overflow-wrap: break-word;">{url}</div>
+                        <div style="display: flex; flex-wrap: wrap;">
+                            { "".join([f'<span class="tech-tag">{t}</span>' for t in t_list]) }
+                        </div>
                     </div>
                 </div>
+                ''' for url, t_list in list(self.tech_stack.items())[:20]]) if self.tech_stack else "<p>No fingerprinting data available.</p>"}
             </div>
-            ''' for url, t_list in list(self.tech_stack.items())[:15]]) if self.tech_stack else "<p>No tech stack data available.</p>"}
         </section>
     </main>
 
     <script>
+        // Severity Distribution Chart
+        const sevCtx = document.getElementById('severityChart').getContext('2d');
+        new Chart(sevCtx, {{
+            type: 'doughnut',
+            data: {{
+                labels: ['Critical', 'High', 'Medium', 'Low', 'Info'],
+                datasets: [{{
+                    data: [{severity_counts['critical']}, {severity_counts['high']}, {severity_counts['medium']}, {severity_counts['low']}, {severity_counts['info']}],
+                    backgroundColor: ['#ef4444', '#f97316', '#eab308', '#22c55e', '#3b82f6'],
+                    borderWidth: 0,
+                    hoverOffset: 15
+                }}]
+            }},
+            options: {{
+                plugins: {{
+                    legend: {{ position: 'bottom', labels: {{ color: '#94a3b8', font: {{ family: 'Outfit', size: 12 }} }} }},
+                    title: {{ display: true, text: 'Severity Distribution', color: '#f8fafc', font: {{ size: 18, weight: '700' }} }}
+                }},
+                cutout: '70%',
+                maintainAspectRatio: false
+            }}
+        }});
+
+        // Tech Distribution Chart
+        const techCtx = document.getElementById('techChart').getContext('2d');
+        new Chart(techCtx, {{
+            type: 'bar',
+            data: {{
+                labels: {list(top_techs.keys())},
+                datasets: [{{
+                    label: 'Adoption Count',
+                    data: {list(top_techs.values())},
+                    backgroundColor: '#38bdf8',
+                    borderRadius: 8
+                }}]
+            }},
+            options: {{
+                indexAxis: 'y',
+                plugins: {{
+                    legend: {{ display: false }},
+                    title: {{ display: true, text: 'Top Technologies Detected', color: '#f8fafc', font: {{ size: 18, weight: '700' }} }}
+                }},
+                scales: {{
+                    x: {{ grid: {{ color: '#1f2937' }}, ticks: {{ color: '#94a3b8' }} }},
+                    y: {{ grid: {{ display: false }}, ticks: {{ color: '#94a3b8' }} }}
+                }},
+                maintainAspectRatio: false
+            }}
+        }});
+
         function filterSection(id, query) {{
             const div = document.getElementById(id);
             const items = div.getElementsByClassName('finding-item');
@@ -1695,6 +1807,24 @@ class ReconMaster:
                 item.style.display = item.innerText.toLowerCase().includes(q) ? 'flex' : 'none';
             }}
         }}
+
+        // Active Navigation Tracking
+        window.addEventListener('scroll', () => {{
+            let current = "";
+            const sections = document.querySelectorAll("section");
+            sections.forEach(section => {{
+                if (pageYOffset >= section.offsetTop - 150) {{
+                    current = section.getAttribute("id");
+                }}
+            }});
+            const navLinks = document.querySelectorAll("nav a");
+            navLinks.forEach(a => {{
+                a.classList.remove("active");
+                if (a.getAttribute("href").includes(current)) {{
+                    a.classList.add("active");
+                }}
+            }});
+        }});
     </script>
 </body>
 </html>
@@ -1765,6 +1895,7 @@ class ReconMaster:
             json.dump(summary_data, f, indent=4)
 
         # 📝 executive_report.md
+        self._ensure_dir(self.files["executive_report"])
         with open(self.files["executive_report"], "w", encoding="utf-8") as f:
             f.write(f"# Reconnaissance Executive Report: {self.target}\n\n")
             f.write(f"**Date:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")

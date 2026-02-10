@@ -454,8 +454,12 @@ jobs:
           echo "✅ Nuclei templates updated successfully"
 
       - name: Configure API Keys
-        if: env.API_KEYS_CONFIGURED == 'true'
         run: |
+          if [ -z "${{ secrets.VIRUSTOTAL_API_KEY }}" ] && [ -z "${{ secrets.SHODAN_API_KEY }}" ]; then
+            echo "ℹ️ No API keys configured for enhanced discovery, skipping."
+            exit 0
+          fi
+          
           echo "🔑 Configuring API keys for enhanced subdomain discovery..."
           
           # Create Subfinder provider config
@@ -471,8 +475,6 @@ jobs:
           EOF
           
           echo "✅ API keys configured"
-        env:
-          API_KEYS_CONFIGURED: ${{ secrets.VIRUSTOTAL_API_KEY != '' || secrets.SHODAN_API_KEY != '' }}
         continue-on-error: true
 
       - name: Install Python Dependencies
@@ -1219,7 +1221,7 @@ jobs:
           cat combined_summary.md >> $GITHUB_STEP_SUMMARY
 
       - name: Notify on Completion
-        if: (github.event.inputs.notify == 'true' || github.event_name == 'schedule') && secrets.WEBHOOK_URL != ''
+        if: github.event.inputs.notify == 'true' || github.event_name == 'schedule'
         run: |
           # Prepare notification payload
           PAYLOAD=$(cat << 'EOF'
@@ -1270,12 +1272,16 @@ jobs:
           EOF
           )
           
-          # Send notification
-          curl -X POST "${{ secrets.WEBHOOK_URL }}" \
-            -H "Content-Type: application/json" \
-            -d "$PAYLOAD" \
-            -w "\nHTTP Status: %{http_code}\n" \
-            || echo "⚠️ Notification failed - check WEBHOOK_URL configuration"
+          # Send notification if webhook is configured
+          if [ -n "${{ secrets.WEBHOOK_URL }}" ]; then
+            curl -X POST "${{ secrets.WEBHOOK_URL }}" \
+              -H "Content-Type: application/json" \
+              -d "$PAYLOAD" \
+              -w "\nHTTP Status: %{http_code}\n" \
+              || echo "⚠️ Notification failed - check WEBHOOK_URL configuration"
+          else
+            echo "ℹ️ Notification skipped - WEBHOOK_URL not configured"
+          fi
 
       - name: Create Scan Report Issue
         if: github.event_name == 'schedule' && (needs.prepare.outputs.total_domains > 0)
@@ -1299,10 +1305,14 @@ jobs:
     name: Notify on Failure
     needs: [authorization-check, prepare, recon]
     runs-on: ubuntu-latest
-    if: failure() && secrets.WEBHOOK_URL != ''
+    if: failure()
     steps:
       - name: Send Failure Notification
         run: |
+          if [ -z "${{ secrets.WEBHOOK_URL }}" ]; then
+            echo "ℹ️ No Webhook URL configured, skipping notification."
+            exit 0
+          fi
           curl -X POST "${{ secrets.WEBHOOK_URL }}" \
             -H "Content-Type: application/json" \
             -d '{

@@ -94,5 +94,5 @@ jobs:
         if: always()
         with:
           name: summary-report-${{ github.run_number }}
-          path: recon_results/**/reports/RECON_SUMMARY.md
+          path: recon_results/**/executive_report.md
           retention-days: 90

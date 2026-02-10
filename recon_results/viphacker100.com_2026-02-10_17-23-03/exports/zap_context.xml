@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<configuration>
+    <context>
+        <name>ReconMaster_viphacker100.com</name>
+        <desc/>
+        <inscope>true</inscope>
+        <incregexes>https?://viphacker100\.com/.*</incregexes>
+    </context>
+</configuration>

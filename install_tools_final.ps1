@@ -14,7 +14,8 @@ $tools = @(
     @{ name = "katana"; url = "https://github.com/projectdiscovery/katana/releases/download/v1.1.0/katana_1.1.0_windows_amd64.zip" },
     @{ name = "gowitness"; url = "https://github.com/sensepost/gowitness/releases/download/2.5.1/gowitness_2.5.1_windows_amd64.zip" },
     @{ name = "amass"; url = "https://github.com/owasp-amass/amass/releases/download/v4.2.0/amass_windows_amd64.zip" },
-    @{ name = "assetfinder"; url = "https://github.com/tomnomnom/assetfinder/releases/download/v0.1.1/assetfinder-windows-amd64-0.1.1.zip" }
+    @{ name = "assetfinder"; url = "https://github.com/tomnomnom/assetfinder/releases/download/v0.1.1/assetfinder-windows-amd64-0.1.1.zip" },
+    @{ name = "subjs"; url = "https://github.com/lc/subjs/releases/download/v1.0.1/subjs_1.0.1_windows_amd64.zip" }
 )
 
 Write-Host "`n╦═╗╔═╗╔═╗╔═╗╔╗╔╔╦╗╔═╗╔═╗╔╦╗╔═╗╦═╗" -ForegroundColor Cyan
@@ -57,6 +58,10 @@ foreach ($tool in $tools) {
 }
 
 Write-Host "`n[+] All Windows tools are ready in .\bin\" -ForegroundColor Green
+
+# Install Python requirements
+Write-Host "`n[*] Installing Python dependencies..." -ForegroundColor Blue
+pip install -r requirements.txt arjun
 
 # Add to PATH for current session
 $binPath = Join-Path (Get-Location) "bin"

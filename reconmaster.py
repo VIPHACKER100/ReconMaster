@@ -374,7 +374,7 @@ class ReconMaster:
     def verify_tools(self):
         """Verify all required tools are resolved to absolute paths"""
         critical_tools = ["subfinder", "assetfinder", "amass", "ffuf", "httpx", "nuclei", "gowitness", "katana"]
-        optional_tools = ["arjun", "nmap", "dnsx"]
+        optional_tools = ["arjun", "nmap", "dnsx", "subjs"]
         missing_critical = []
 
         for tool in critical_tools:
@@ -439,6 +439,7 @@ class ReconMaster:
             "assetfinder": os.path.join(self.dirs["subdomains"], "assetfinder.txt"),
             "amass": os.path.join(self.dirs["subdomains"], "amass.txt"),
             "dns_records": os.path.join(self.dirs["subdomains"], "dns_records.json"),
+            "takeovers": os.path.join(self.dirs["subdomains"], "takeovers.txt"),
 
             "alive": os.path.join(self.dirs["http"], "alive.txt"),
             "httpx_full": os.path.join(self.dirs["http"], "httpx_full.json"),
@@ -457,6 +458,7 @@ class ReconMaster:
             "api_endpoints": os.path.join(self.dirs["endpoints"], "api_endpoints.txt"),
             "admin_panels": os.path.join(self.dirs["endpoints"], "admin_panels.txt"),
             "crawl_tree": os.path.join(self.dirs["endpoints"], "crawl_tree.json"),
+            "broken_links": os.path.join(self.dirs["endpoints"], "broken_links.txt"),
 
             "javascript_files": os.path.join(self.dirs["js"], "javascript_files.txt"),
             "js_secrets": os.path.join(self.dirs["js"], "secrets.txt"),
@@ -864,22 +866,89 @@ class ReconMaster:
             except Exception as e:
                 logger.error(f"Error parsing nuclei results: {e}")
 
-        # Check specifically for takeovers
-        takeover_out = os.path.join(self.dirs["vulns"], "takeovers.txt")
-        cmd_takeover = [
+        print(f"{Colors.GREEN}[+] Vulnerability scan complete. Detected {len(self.vulns)} issues.{Colors.ENDC}")
+
+    async def check_takeovers(self):
+        """Dedicated subdomain takeover detection using specialized nuclei templates"""
+        if not self.live_domains:
+            return
+
+        print(f"{Colors.BLUE}[*] Checking for subdomain takeovers...{Colors.ENDC}")
+
+        cmd = [
             "nuclei",
             "-l", self.files["alive"],
             "-tags", "takeover",
-            "-o", takeover_out,
+            "-o", self.files["takeovers"],
             "-silent"
         ]
-        await self._run_command(cmd_takeover, timeout=600)
+        await self._run_command(cmd, timeout=600)
 
-        if os.path.exists(takeover_out):
-            with open(takeover_out, "r") as f:
-                self.takeovers = [line.strip() for line in f if line.strip()]
+        if os.path.exists(self.files["takeovers"]):
+            try:
+                with open(self.files["takeovers"], "r") as f:
+                    self.takeovers = [line.strip() for line in f if line.strip()]
+                if self.takeovers:
+                    print(f"{Colors.RED}[!] ALERT: {len(self.takeovers)} Potential Takeovers Found!{Colors.ENDC}")
+                    for t in self.takeovers[:5]:
+                        print(f"  --> {t}")
+                        self.vulns.append({
+                            "info": {"name": "Potential Subdomain Takeover", "severity": "high"},
+                            "matched-at": t
+                        })
+            except Exception as e:
+                logger.error(f"Error reading takeover results: {e}")
 
-        print(f"{Colors.GREEN}[+] Vulnerability scan complete. Detected {len(self.vulns)} issues.{Colors.ENDC}")
+    async def check_broken_links(self):
+        """Identify broken social media or 3rd party links (Social Hijacking)"""
+        if not _HAVE_AIOHTTP:
+            logger.warning("aiohttp not available, skipping broken link detection.")
+            return
+
+        if not self.urls:
+            return
+
+        print(f"{Colors.BLUE}[*] Checking for broken social/3rd-party links...{Colors.ENDC}")
+        
+        social_domains = ["twitter.com", "instagram.com", "facebook.com", "linkedin.com", "github.com", "youtube.com", "t.me"]
+        target_links = []
+        
+        for url in self.urls:
+            for domain in social_domains:
+                if domain in url.lower() and self.target not in url.lower():
+                    target_links.append(url)
+        
+        target_links = list(set(target_links))[:100] # Limit for performance
+        if not target_links:
+            return
+
+        connector = aiohttp.TCPConnector(ssl=False, limit=self.threads)
+        async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=10), connector=connector) as session:
+            async def check_link(url):
+                if not await self.circuit_breaker.check_can_proceed():
+                    return None
+                try:
+                    async with session.head(url, allow_redirects=True, timeout=5) as resp:
+                        if resp.status == 404:
+                            return url
+                except Exception:
+                    pass
+                return None
+
+            tasks = [check_link(url) for url in target_links]
+            results = await asyncio.gather(*tasks)
+            broken = [r for r in results if r]
+            
+            if broken:
+                self.broken_links = broken
+                print(f"{Colors.YELLOW}[!] Found {len(broken)} broken social/external links!{Colors.ENDC}")
+                with open(self.files["broken_links"], "w") as f:
+                    for link in broken:
+                        f.write(link + "\n")
+                        self.vulns.append({
+                            "info": {"name": "Broken Social Link Hijack", "severity": "medium"},
+                            "matched-at": link
+                        })
 
     async def take_screenshots(self):
         """Capture screenshots of live hosts chunk by chunk"""
@@ -1276,6 +1345,74 @@ class ReconMaster:
                     f_dst.write(f_src.read() + "\n")
                 os.remove(self.files["parameters"] + "_tmp")
 
+    async def fuzz_directories(self):
+        """Perform directory brute-forcing on live hosts using ffuf"""
+        if not self.live_domains or "ffuf" not in self.tool_paths:
+            return
+
+        print(f"{Colors.BLUE}[*] Brute-forcing directories with ffuf...{Colors.ENDC}")
+        
+        # Use first 5 live domains to avoid over-scanning in baseline
+        targets = list(self.live_domains)[:5]
+        
+        for url in targets:
+            url_safe = re.sub(r'[^a-zA-Z0-9]', '_', url)[:50]
+            out_file = os.path.join(self.dirs["endpoints"], f"fuzz_{url_safe}.json")
+            
+            cmd = [
+                "ffuf",
+                "-w", self.dir_wordlist,
+                "-u", f"{url.rstrip('/')}/FUZZ",
+                "-mc", "200,201,204,301,302,401,403",
+                "-o", out_file,
+                "-of", "json",
+                "-t", str(min(self.threads * 2, 50)),
+                "-silent"
+            ]
+            await self._run_command(cmd, timeout=600)
+            
+            if os.path.exists(out_file):
+                try:
+                    with open(out_file, "r") as f:
+                        data = json.load(f)
+                        results = data.get("results", [])
+                        for res in results:
+                            path = res.get("url")
+                            status = res.get("status")
+                            if path:
+                                self.urls.add(path)
+                                if status == 200:
+                                    print(f"{Colors.CYAN}[+] Discovered Path: {path} ({status}){Colors.ENDC}")
+                except Exception as e:
+                    logger.error(f"Error parsing ffuf directory results: {e}")
+
+    async def subjs_discovery(self):
+        """Find JavaScript files from list of URLs using subjs"""
+        if not self.live_domains or "subjs" not in self.tool_paths:
+            return
+
+        print(f"{Colors.BLUE}[*] Discovering additional JS files with subjs...{Colors.ENDC}")
+        
+        # Write live domains to a temp file for subjs
+        temp_input = os.path.join(self.output_dir, "subjs_input.tmp")
+        with open(temp_input, "w") as f:
+            for d in self.live_domains:
+                f.write(d + "\n")
+        
+        cmd = ["subjs", "-i", temp_input]
+        stdout, stderr, rc = await self._run_command(cmd, timeout=300)
+        
+        if stdout:
+            js_urls = [line.strip() for line in stdout.splitlines() if line.strip()]
+            for js in js_urls:
+                if self._is_url_in_scope(js):
+                    self.js_files.add(js)
+            
+            print(f"{Colors.GREEN}[+] subjs found {len(js_urls)} unique JS files.{Colors.ENDC}")
+        
+        if os.path.exists(temp_input):
+            os.remove(temp_input)
+
     async def port_scan(self):
         """Fast port scanning using nmap"""
         if not self.live_domains:
@@ -1322,6 +1459,243 @@ class ReconMaster:
             score += 10  # Base penalty for significant findings
 
         return min(score, 100)
+
+    def _generate_premium_html_report(self, duration, end_dt):
+        """Generate high-fidelity premium HTML report"""
+        html_template = f"""
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ReconMaster Elite Report - {{self.target}}</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {{
+            --bg: #0b0f1a;
+            --sidebar: #111827;
+            --card: rgba(30, 41, 59, 0.7);
+            --accent: #38bdf8;
+            --text-main: #f8fafc;
+            --text-dim: #94a3b8;
+            --critical: #ef4444;
+            --high: #f97316;
+            --medium: #eab308;
+            --low: #22c55e;
+            --info: #3b82f6;
+        }}
+        
+        * {{ box-sizing: border-box; transition: all 0.2s ease-in-out; }}
+        body {{ 
+            font-family: 'Outfit', sans-serif; 
+            background: var(--bg); 
+            color: var(--text-main); 
+            margin: 0; 
+            display: flex;
+            min-height: 100vh;
+        }}
+
+        sidebar {{
+            width: 280px;
+            background: var(--sidebar);
+            border-right: 1px solid #1f2937;
+            padding: 2rem;
+            display: flex;
+            flex-direction: column;
+            gap: 2rem;
+            position: sticky;
+            top: 0;
+            height: 100vh;
+        }}
+
+        .logo {{ font-size: 1.5rem; font-weight: 700; color: var(--accent); letter-spacing: -1px; }}
+        
+        nav {{ display: flex; flex-direction: column; gap: 0.5rem; }}
+        nav a {{ 
+            padding: 0.75rem 1rem; 
+            border-radius: 8px; 
+            color: var(--text-dim); 
+            text-decoration: none; 
+            font-weight: 500;
+        }}
+        nav a:hover, nav a.active {{ background: #1e293b; color: var(--accent); }}
+
+        main {{ flex: 1; padding: 3rem; overflow-y: auto; }}
+        
+        .header {{ margin-bottom: 3rem; }}
+        .header h1 {{ font-size: 2.5rem; margin: 0; font-weight: 700; }}
+        .header p {{ color: var(--text-dim); margin-top: 0.5rem; }}
+
+        .stats-grid {{ 
+            display: grid; 
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); 
+            gap: 1.5rem; 
+            margin-bottom: 3rem; 
+        }}
+        
+        .stat-card {{ 
+            background: var(--card); 
+            backdrop-filter: blur(10px);
+            padding: 1.5rem; 
+            border-radius: 16px; 
+            border: 1px solid rgba(255,255,255,0.05);
+            text-align: left;
+        }}
+        .stat-card .label {{ color: var(--text-dim); font-size: 0.875rem; text-transform: uppercase; letter-spacing: 1px; }}
+        .stat-card .value {{ font-size: 2rem; font-weight: 700; margin-top: 0.5rem; color: var(--accent); }}
+
+        .severity-pill {{
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }}
+        .bg-critical {{ background: rgba(239, 68, 68, 0.15); color: var(--critical); }}
+        .bg-high {{ background: rgba(249, 115, 22, 0.15); color: var(--high); }}
+        .bg-medium {{ background: rgba(234, 179, 8, 0.15); color: var(--medium); }}
+        .bg-low {{ background: rgba(34, 197, 94, 0.15); color: var(--low); }}
+
+        section {{ margin-bottom: 4rem; }}
+        section h2 {{ font-size: 1.5rem; margin-bottom: 1.5rem; border-left: 4px solid var(--accent); padding-left: 1rem; }}
+
+        .finding-item {{
+            background: var(--card);
+            padding: 1.5rem;
+            border-radius: 12px;
+            margin-bottom: 1rem;
+            border-left: 4px solid #334155;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }}
+        .finding-item:hover {{ border-color: var(--accent); background: #1e293b; }}
+        
+        .search-box {{
+            width: 100%;
+            padding: 1rem;
+            background: #111827;
+            border: 1px solid #374151;
+            border-radius: 8px;
+            color: white;
+            margin-bottom: 2rem;
+            font-size: 1rem;
+        }}
+
+        .tech-tag {{
+            display: inline-block;
+            background: #1e293b;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            margin-right: 4px;
+            color: var(--accent);
+        }}
+
+        @keyframes fadeIn {{ from {{ opacity: 0; transform: translateY(10px); }} to {{ opacity: 1; transform: translateY(0); }} }}
+        .animate {{ animation: fadeIn 0.5s ease-out forwards; }}
+    </style>
+</head>
+<body>
+    <sidebar>
+        <div class="logo">ReconMaster Pro</div>
+        <nav>
+            <a href="#overview" class="active">Dashboard Overview</a>
+            <a href="#vulnerabilities">Security Findings</a>
+            <a href="#assets">Discovered Assets</a>
+            <a href="#technologies">Technology Stack</a>
+            <a href="#ai-insights">AI Intelligence</a>
+        </nav>
+        <div style="margin-top: auto; font-size: 0.75rem; color: var(--text-dim);">
+            Target: {{self.target}}<br>
+            Version: {{PRO_VERSION}}
+        </div>
+    </sidebar>
+
+    <main>
+        <div class="header animate">
+            <p>CONSOLIDATED ASSESSMENT REPORT</p>
+            <h1>{{self.target}}</h1>
+            <p>Scan completed in {{duration}} | Generated at {{end_dt.strftime("%Y-%m-%d %H:%M:%S")}}</p>
+        </div>
+
+        <div class="stats-grid animate" style="animation-delay: 0.1s">
+            <div class="stat-card">
+                <div class="label">Risk Score</div>
+                <div class="value">{{self._calculate_risk_score()}}/100</div>
+            </div>
+            <div class="stat-card">
+                <div class="label">Total Subdomains</div>
+                <div class="value">{{len(self.subdomains)}}</div>
+            </div>
+            <div class="stat-card">
+                <div class="label">Live Web Hosts</div>
+                <div class="value">{{len(self.live_domains)}}</div>
+            </div>
+            <div class="stat-card">
+                <div class="label">Vulnerabilities</div>
+                <div class="value" style="color: var(--critical)">{{len(self.vulns)}}</div>
+            </div>
+        </div>
+
+        <section id="vulnerabilities" class="animate" style="animation-delay: 0.2s">
+            <h2>Security Findings</h2>
+            <input type="text" class="search-box" placeholder="Filter vulnerabilities by target or name..." onkeyup="filterSection('vuln-list', this.value)">
+            <div id="vuln-list">
+                {"".join([f'''
+                <div class="finding-item">
+                    <div>
+                        <span class="severity-pill bg-{{v.get('info', {{}}).get('severity', 'info').lower() if v.get('info') else 'info'}}">{{v.get('info', {{}}).get('severity', 'info') if v.get('info') else 'INFO'}}</span>
+                        <strong style="margin-left: 10px;">{{v.get('info', {{}}).get('name', 'Discovery') if v.get('info') else 'Discovery'}}</strong>
+                        <div style="color: var(--text-dim); margin-top: 5px; font-size: 0.9rem;">{{v.get('matched-at', 'N/A')}}</div>
+                    </div>
+                </div>
+                ''' for v in self.vulns]) if self.vulns else "<p>No vulnerabilities identified.</p>"}
+            </div>
+        </section>
+
+        <section id="ai-insights" class="animate" style="animation-delay: 0.3s">
+            <h2>AI Intelligence Engine</h2>
+            <div style="display: grid; gap: 1rem;">
+                {"".join([f'''
+                <div class="stat-card" style="text-align: left; border-left: 4px solid var(--accent);">
+                    <div style="font-weight: 600; margin-bottom: 8px;">Analysis for: {{v.get('info', {{}}).get('name') if v.get('info') else 'Finding'}}</div>
+                    <div style="color: var(--text-dim); font-size: 0.95rem; line-height: 1.5;">{{self._generate_ai_profile(v)}}</div>
+                    <div style="margin-top: 10px; font-size: 0.8rem; opacity: 0.7;">Target: {{v.get('matched-at')}}</div>
+                </div>
+                ''' for v in self.vulns[:5]]) if self.vulns else "<p>Insufficient data for AI profiling.</p>"}
+            </div>
+        </section>
+
+        <section id="technologies" class="animate" style="animation-delay: 0.4s">
+            <h2>Asset Fingerprinting</h2>
+            {"".join([f'''
+            <div class="finding-item">
+                <div>
+                    <strong>{{url}}</strong>
+                    <div style="margin-top: 5px;">
+                        {{ "".join([f'<span class="tech-tag">{{t}}</span>' for t in t_list]) }}
+                    </div>
+                </div>
+            </div>
+            ''' for url, t_list in list(self.tech_stack.items())[:15]]) if self.tech_stack else "<p>No tech stack data available.</p>"}
+        </section>
+    </main>
+
+    <script>
+        function filterSection(id, query) {{
+            const div = document.getElementById(id);
+            const items = div.getElementsByClassName('finding-item');
+            const q = query.toLowerCase();
+            for (let item of items) {{
+                item.style.display = item.innerText.toLowerCase().includes(q) ? 'flex' : 'none';
+            }}
+        }}
+    </script>
+</body>
+</html>
+"""
+        return html_template
 
     async def load_and_run_plugins(self):
         """Dynamic plugin loader and runner"""
@@ -1435,55 +1809,8 @@ class ReconMaster:
             f.write(f"- Screenshots: `./screenshots/`\n")
             f.write(f"- Endpoints: `./endpoints/all_urls.txt`\n")
 
-        # 🌐 full_report.html (Basic Interactive)
-        html_content = f"""
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ReconMaster Report - {self.target}</title>
-    <style>
-        body {{ font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #0f172a; color: #f8fafc; margin: 0; padding: 20px; }}
-        .header {{ background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); padding: 30px; border-radius: 12px; border: 1px solid #334155; margin-bottom: 20px; text-align: center; }}
-        .stats {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 20px; }}
-        .card {{ background: #1e293b; padding: 20px; border-radius: 12px; border: 1px solid #334155; text-align: center; transition: transform 0.2s; }}
-        .card:hover {{ transform: translateY(-5px); border-color: #38bdf8; }}
-        .card h3 {{ margin: 0; color: #94a3b8; font-size: 0.9rem; text-transform: uppercase; }}
-        .card .value {{ font-size: 2rem; font-weight: bold; color: #38bdf8; margin: 10px 0; }}
-        .findings {{ background: #1e293b; padding: 20px; border-radius: 12px; border: 1px solid #334155; }}
-        table {{ width: 100%; border-collapse: collapse; margin-top: 10px; }}
-        th, td {{ padding: 12px; text-align: left; border-bottom: 1px solid #334155; }}
-        th {{ background: #0f172a; color: #94a3b8; }}
-        .severity-critical {{ color: #ef4444; font-weight: bold; }}
-        .severity-high {{ color: #f97316; font-weight: bold; }}
-        .severity-medium {{ color: #eab308; font-weight: bold; }}
-        .severity-low {{ color: #22c55e; font-weight: bold; }}
-    </style>
-</head>
-<body>
-    <div class="header">
-        <h1>ReconMaster Assessment: {self.target}</h1>
-        <p>Scan completed at {end_dt.strftime("%Y-%m-%d %H:%M:%S")}</p>
-    </div>
-    <div class="stats">
-        <div class="card"><h3>Subdomains</h3><div class="value">{len(self.subdomains)}</div></div>
-        <div class="card"><h3>Live Hosts</h3><div class="value">{len(self.live_domains)}</div></div>
-        <div class="card"><h3>Vulnerabilities</h3><div class="value">{len(self.vulns)}</div></div>
-        <div class="card"><h3>Risk Score</h3><div class="value">{self._calculate_risk_score()}/100</div></div>
-    </div>
-    <div class="findings">
-        <h2>Key Vulnerabilities</h2>
-        <table>
-            <thead><tr><th>Severity</th><th>Vulnerability</th><th>Target</th></tr></thead>
-            <tbody>
-                {''.join([f"<tr><td class='severity-{v.get('info',{}).get('severity','info').lower()}'>{v.get('info',{}).get('severity','unknown').upper()}</td><td>{v.get('info',{}).get('name')}</td><td>{v.get('matched-at')}</td></tr>" for v in self.vulns[:50]])}
-            </tbody>
-        </table>
-    </div>
-</body>
-</html>
-        """
+        # 🌐 full_report.html (Premium Interactive Dashboard)
+        html_content = self._generate_premium_html_report(duration, end_dt)
         with open(self.files["full_report"], "w", encoding="utf-8") as f:
             f.write(html_content)
 
@@ -1569,8 +1896,12 @@ async def run_recon(recon, args):
             recon.scan_vulnerabilities(),
             recon.take_screenshots(),
             recon.crawl_and_extract(),
+            recon.subjs_discovery(),
+            recon.fuzz_directories(),
             recon.discover_sensitive_files(),
-            recon.fuzz_api_endpoints()
+            recon.fuzz_api_endpoints(),
+            recon.check_takeovers(),
+            recon.check_broken_links()
         )
 
         # Sequence dependent tasks
@@ -1582,7 +1913,8 @@ async def run_recon(recon, args):
         # Specialized light-weight automation mode
         await asyncio.gather(
             recon.scan_vulnerabilities(),
-            recon.fuzz_api_endpoints()
+            recon.fuzz_api_endpoints(),
+            recon.check_takeovers()
         )
         # Daily diff MUST run after discovery and vulnerability scan
         recon.handle_daily_diff()

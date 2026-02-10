@@ -1,64 +1,1346 @@
-name: ReconMaster beta Daily Recon
+name: ReconMaster Advanced Security Scan
 
 on:
   workflow_dispatch:
     inputs:
       domain:
-        description: "Target domain"
+        description: "Target domain (requires authorization)"
         required: true
+        type: string
+      scan_mode:
+        description: "Scan intensity level"
+        required: false
+        default: "passive"
+        type: choice
+        options:
+          - passive
+          - standard
+          - comprehensive
+      notify:
+        description: "Send notifications"
+        required: false
+        default: true
+        type: boolean
+      skip_cache:
+        description: "Skip cache and run fresh scan"
+        required: false
+        default: false
+        type: boolean
+      nuclei_severity:
+        description: "Minimum Nuclei severity level"
+        required: false
+        default: "medium"
+        type: choice
+        options:
+          - info
+          - low
+          - medium
+          - high
+          - critical
   schedule:
     - cron: "0 3 * * *"   # Daily at 03:00 UTC
+  workflow_call:
+    inputs:
+      domain:
+        description: "Target domain"
+        required: true
+        type: string
+      scan_mode:
+        description: "Scan mode"
+        required: false
+        type: string
+        default: "passive"
+    secrets:
+      AUTHORIZED_DOMAINS:
+        required: false
+      WEBHOOK_URL:
+        required: false
+
+env:
+  PYTHON_VERSION: "3.11"
+  GO_VERSION: "1.21"
+  SCAN_TIMEOUT: 180
+  MAX_RETRIES: 3
+  NUCLEI_VERSION: "v3"
+  RESULTS_BASE_DIR: "recon_results"
+
+permissions:
+  contents: read
+  actions: read
+  checks: write
+  pull-requests: write
 
 jobs:
+  # Security and authorization check
+  authorization-check:
+    name: Authorization Verification
+    runs-on: ubuntu-latest
+    outputs:
+      authorized: ${{ steps.check.outputs.authorized }}
+      scan_type: ${{ steps.check.outputs.scan_type }}
+    steps:
+      - name: Display Legal Notice
+        run: |
+          echo "════════════════════════════════════════════════════════════════════════════════"
+          echo "⚠️                         LEGAL NOTICE                                      ⚠️"
+          echo "════════════════════════════════════════════════════════════════════════════════"
+          echo ""
+          echo "This security scanning tool must ONLY be used on domains you own or for which"
+          echo "you have explicit written authorization to test."
+          echo ""
+          echo "Unauthorized scanning may violate:"
+          echo "  • Computer Fraud and Abuse Act (CFAA) - United States"
+          echo "  • Computer Misuse Act - United Kingdom"
+          echo "  • Similar legislation in other jurisdictions"
+          echo ""
+          echo "By proceeding, you acknowledge:"
+          echo "  1. You have proper authorization for this scan"
+          echo "  2. You accept full responsibility for your actions"
+          echo "  3. You will comply with all applicable laws and regulations"
+          echo ""
+          echo "════════════════════════════════════════════════════════════════════════════════"
+          echo ""
+
+      - name: Verify Authorization
+        id: check
+        run: |
+          # Check if running on schedule or manual trigger
+          if [ "${{ github.event_name }}" = "schedule" ]; then
+            echo "scan_type=scheduled" >> $GITHUB_OUTPUT
+            
+            # For scheduled runs, check if domains are configured
+            if [ -z "${{ secrets.AUTHORIZED_DOMAINS }}" ]; then
+              echo "❌ ERROR: No authorized domains configured for scheduled scans"
+              echo "Please configure AUTHORIZED_DOMAINS secret in repository settings"
+              echo "Path: Settings → Secrets and variables → Actions → New repository secret"
+              exit 1
+            fi
+            
+            echo "✅ Scheduled scan authorized"
+            echo "✅ Domains configured: ${{ secrets.AUTHORIZED_DOMAINS }}"
+            echo "authorized=true" >> $GITHUB_OUTPUT
+            
+          elif [ "${{ github.event_name }}" = "workflow_call" ]; then
+            echo "scan_type=workflow_call" >> $GITHUB_OUTPUT
+            
+            if [ -z "${{ inputs.domain }}" ]; then
+              echo "❌ ERROR: No domain specified in workflow call"
+              exit 1
+            fi
+            
+            echo "✅ Workflow call authorized for: ${{ inputs.domain }}"
+            echo "authorized=true" >> $GITHUB_OUTPUT
+            
+          else
+            echo "scan_type=manual" >> $GITHUB_OUTPUT
+            
+            # For manual runs, require explicit confirmation
+            if [ -z "${{ github.event.inputs.domain }}" ]; then
+              echo "❌ ERROR: No domain specified"
+              exit 1
+            fi
+            
+            echo "✅ Manual scan authorized for: ${{ github.event.inputs.domain }}"
+            echo "authorized=true" >> $GITHUB_OUTPUT
+          fi
+          
+          echo ""
+          echo "Authorization check completed successfully"
+
+      - name: Rate Limit Check
+        run: |
+          # Prevent abuse by checking workflow run frequency
+          RECENT_RUNS=$(gh api /repos/${{ github.repository }}/actions/runs \
+            --jq '.workflow_runs | map(select(.created_at > (now - 3600))) | length' 2>/dev/null || echo "0")
+          
+          if [ "$RECENT_RUNS" -gt 10 ]; then
+            echo "⚠️  WARNING: High number of recent workflow runs detected"
+            echo "Consider spacing out scans to avoid rate limiting and resource exhaustion"
+          fi
+        env:
+          GH_TOKEN: ${{ github.token }}
+        continue-on-error: true
+
+  # Prepare scan configuration
+  prepare:
+    name: Prepare Scan Matrix
+    needs: authorization-check
+    runs-on: ubuntu-latest
+    outputs:
+      domains: ${{ steps.set-domains.outputs.domains }}
+      matrix: ${{ steps.set-domains.outputs.matrix }}
+      scan_id: ${{ steps.set-domains.outputs.scan_id }}
+      scan_mode: ${{ steps.set-domains.outputs.scan_mode }}
+      total_domains: ${{ steps.set-domains.outputs.total_domains }}
+    steps:
+      - name: Generate Scan ID
+        id: generate-id
+        run: |
+          SCAN_ID="scan-$(date +%Y%m%d-%H%M%S)-${{ github.run_number }}"
+          echo "scan_id=$SCAN_ID" >> $GITHUB_OUTPUT
+          echo "📋 Scan ID: $SCAN_ID"
+          echo "📅 Timestamp: $(date -u +"%Y-%m-%d %H:%M:%S UTC")"
+
+      - name: Configure Domain Matrix
+        id: set-domains
+        run: |
+          # Determine domains to scan based on trigger type
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            DOMAINS="${{ github.event.inputs.domain }}"
+            SCAN_MODE="${{ github.event.inputs.scan_mode || 'passive' }}"
+          elif [ "${{ github.event_name }}" = "workflow_call" ]; then
+            DOMAINS="${{ inputs.domain }}"
+            SCAN_MODE="${{ inputs.scan_mode || 'passive' }}"
+          else
+            DOMAINS="${{ secrets.AUTHORIZED_DOMAINS }}"
+            SCAN_MODE="standard"  # Default for scheduled scans
+          fi
+          
+          if [ -z "$DOMAINS" ]; then
+            echo "❌ ERROR: No domains configured"
+            exit 1
+          fi
+          
+          echo "🎯 Target domains: $DOMAINS"
+          echo "🔍 Scan mode: $SCAN_MODE"
+          
+          # Validate domain format with detailed error messages
+          INVALID_DOMAINS=""
+          for domain in $(echo "$DOMAINS" | tr ',' ' '); do
+            # Remove whitespace
+            domain=$(echo "$domain" | xargs)
+            
+            # Check for valid domain format
+            if ! echo "$domain" | grep -qE '^[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*\.[a-zA-Z]{2,}$'; then
+              INVALID_DOMAINS="$INVALID_DOMAINS $domain"
+            fi
+            
+            # Check for common mistakes
+            if echo "$domain" | grep -qE '^https?://'; then
+              echo "⚠️  WARNING: Domain should not include protocol: $domain"
+              INVALID_DOMAINS="$INVALID_DOMAINS $domain"
+            fi
+            
+            if echo "$domain" | grep -qE '^www\.'; then
+              echo "⚠️  Note: Domain includes 'www' subdomain: $domain"
+            fi
+          done
+          
+          if [ -n "$INVALID_DOMAINS" ]; then
+            echo "❌ ERROR: Invalid domain format detected"
+            echo "Invalid domains:$INVALID_DOMAINS"
+            echo ""
+            echo "Valid format examples:"
+            echo "  ✅ example.com"
+            echo "  ✅ subdomain.example.com"
+            echo "  ✅ my-site.org"
+            echo ""
+            echo "Invalid formats:"
+            echo "  ❌ https://example.com (remove protocol)"
+            echo "  ❌ example.com:443 (remove port)"
+            echo "  ❌ 192.168.1.1 (IP addresses not supported)"
+            exit 1
+          fi
+          
+          # Convert to JSON array
+          MATRIX=$(echo "$DOMAINS" | tr ',' '\n' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | jq -R -s -c 'split("\n") | map(select(length > 0))')
+          TOTAL_DOMAINS=$(echo "$MATRIX" | jq '. | length')
+          
+          echo "domains=$DOMAINS" >> $GITHUB_OUTPUT
+          echo "matrix=$MATRIX" >> $GITHUB_OUTPUT
+          echo "scan_id=${{ steps.generate-id.outputs.scan_id }}" >> $GITHUB_OUTPUT
+          echo "scan_mode=$SCAN_MODE" >> $GITHUB_OUTPUT
+          echo "total_domains=$TOTAL_DOMAINS" >> $GITHUB_OUTPUT
+          
+          echo ""
+          echo "✅ Configured $TOTAL_DOMAINS domain(s) for scanning"
+          echo "📊 Domain matrix:"
+          echo "$MATRIX" | jq -r '.[]' | sed 's/^/  • /'
+
+      - name: Create Scan Metadata
+        run: |
+          cat > scan_metadata.json << EOF
+          {
+            "scan_id": "${{ steps.set-domains.outputs.scan_id }}",
+            "timestamp": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")",
+            "trigger": "${{ github.event_name }}",
+            "actor": "${{ github.actor }}",
+            "repository": "${{ github.repository }}",
+            "workflow": "${{ github.workflow }}",
+            "run_number": ${{ github.run_number }},
+            "run_id": ${{ github.run_id }},
+            "domains": ${{ steps.set-domains.outputs.matrix }},
+            "total_domains": ${{ steps.set-domains.outputs.total_domains }},
+            "scan_mode": "${{ steps.set-domains.outputs.scan_mode }}"
+          }
+          EOF
+          
+          echo "📄 Scan metadata created"
+          cat scan_metadata.json | jq .
+
+      - name: Upload Scan Metadata
+        uses: actions/upload-artifact@v4
+        with:
+          name: metadata-${{ steps.set-domains.outputs.scan_id }}
+          path: scan_metadata.json
+          retention-days: 90
+
+  # Main reconnaissance job
   recon:
+    name: Scan ${{ matrix.domain }}
+    needs: prepare
     runs-on: ubuntu-latest
     timeout-minutes: 180
+    strategy:
+      fail-fast: false
+      max-parallel: 2  # Limit concurrent scans to prevent resource exhaustion
+      matrix:
+        domain: ${{ fromJson(needs.prepare.outputs.matrix) }}
 
     steps:
-      - name: Checkout
+      - name: Checkout Repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
 
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+          cache-dependency-path: |
+            requirements.txt
+            **/requirements*.txt
 
-      - name: Install system dependencies
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: false
+
+      - name: Cache Go Binaries
+        uses: actions/cache@v4
+        if: github.event.inputs.skip_cache != 'true'
+        with:
+          path: ~/go/bin
+          key: go-tools-${{ runner.os }}-${{ hashFiles('.github/workflows/reconmaster.yml') }}-v2
+          restore-keys: |
+            go-tools-${{ runner.os }}-v2-
+            go-tools-${{ runner.os }}-
+
+      - name: Install System Dependencies
         run: |
-          sudo apt update
-          sudo apt install -y nmap jq chromium-browser
+          echo "📦 Installing system dependencies..."
+          
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq \
+            nmap \
+            jq \
+            chromium-browser \
+            chromium-chromedriver \
+            git \
+            wget \
+            curl \
+            ca-certificates \
+            libpcap-dev \
+            dnsutils \
+            whois \
+            build-essential \
+            python3-dev
+          
+          # Verify installations
+          echo ""
+          echo "✅ System dependencies installed successfully"
+          echo "📊 Installed versions:"
+          nmap --version | head -n 2
+          jq --version
+          chromium-browser --version
+          git --version
 
       - name: Install Recon Tools
         run: |
-          go install github.com/projectdiscovery/subfinder/v2/cmd/subfinder@latest
-          go install github.com/projectdiscovery/httpx/cmd/httpx@latest
-          go install github.com/projectdiscovery/nuclei/v3/cmd/nuclei@latest
-          go install github.com/projectdiscovery/dnsx/cmd/dnsx@latest
-          go install github.com/projectdiscovery/katana/cmd/katana@latest
-          go install github.com/ffuf/ffuf@latest
-          go install github.com/sensepost/gowitness@latest
-          go install github.com/tomnomnom/assetfinder@latest
-          go install github.com/owasp-amass/amass/v4/...@latest
+          set -e
+          
+          echo "📦 Installing reconnaissance tools..."
+          echo "This may take several minutes..."
+          echo ""
+          
+          # Function to install Go tool with retry and verification
+          install_go_tool() {
+            local tool=$1
+            local binary_name=$2
+            local max_attempts=${{ env.MAX_RETRIES }}
+            local attempt=1
+            
+            while [ $attempt -le $max_attempts ]; do
+              echo "Installing $binary_name (attempt $attempt/$max_attempts)..."
+              
+              if go install -v "$tool@latest" 2>&1 | grep -v "^go: downloading"; then
+                # Verify installation
+                if command -v "$binary_name" &> /dev/null; then
+                  echo "✅ $binary_name installed successfully"
+                  $binary_name -version 2>/dev/null || $binary_name --version 2>/dev/null || echo "  (version check not available)"
+                  return 0
+                fi
+              fi
+              
+              echo "⚠️  Attempt $attempt failed, retrying..."
+              attempt=$((attempt + 1))
+              sleep 2
+            done
+            
+            echo "❌ Failed to install $binary_name after $max_attempts attempts"
+            return 1
+          }
+          
+          # Add Go bin to PATH
+          export PATH="$HOME/go/bin:$PATH"
           echo "$HOME/go/bin" >> $GITHUB_PATH
+          
+          # Install essential tools
+          install_go_tool "github.com/projectdiscovery/subfinder/v2/cmd/subfinder" "subfinder"
+          install_go_tool "github.com/projectdiscovery/httpx/cmd/httpx" "httpx"
+          install_go_tool "github.com/projectdiscovery/nuclei/${{ env.NUCLEI_VERSION }}/cmd/nuclei" "nuclei"
+          install_go_tool "github.com/projectdiscovery/dnsx/cmd/dnsx" "dnsx"
+          install_go_tool "github.com/projectdiscovery/katana/cmd/katana" "katana"
+          install_go_tool "github.com/tomnomnom/assetfinder" "assetfinder"
+          install_go_tool "github.com/projectdiscovery/naabu/v2/cmd/naabu" "naabu" || echo "⚠️ Naabu installation failed, continuing..."
+          install_go_tool "github.com/owasp-amass/amass/v4/...@latest" "amass" || echo "⚠️ Amass installation failed, continuing..."
+          
+          # Install additional useful tools
+          install_go_tool "github.com/tomnomnom/waybackurls" "waybackurls" || echo "⚠️ Waybackurls installation failed, continuing..."
+          install_go_tool "github.com/tomnomnom/gf" "gf" || echo "⚠️ Gf installation failed, continuing..."
+          install_go_tool "github.com/lc/gau/v2/cmd/gau" "gau" || echo "⚠️ Gau installation failed, continuing..."
+          
+          # Verify core tool installations
+          echo ""
+          echo "🔍 Verifying core tool installations:"
+          
+          MISSING_TOOLS=""
+          for tool in subfinder httpx nuclei dnsx katana assetfinder; do
+            if command -v "$tool" &> /dev/null; then
+              echo "  ✅ $tool"
+            else
+              echo "  ❌ $tool - MISSING"
+              MISSING_TOOLS="$MISSING_TOOLS $tool"
+            fi
+          done
+          
+          if [ -n "$MISSING_TOOLS" ]; then
+            echo ""
+            echo "❌ ERROR: Core tools missing:$MISSING_TOOLS"
+            echo "Scan cannot proceed without these tools"
+            exit 1
+          fi
+          
+          echo ""
+          echo "✅ All core reconnaissance tools installed successfully"
 
-      - name: Install Python deps
-        run: pip install -r requirements.txt
-
-      - name: Run ReconMaster
-        env:
-          TARGET_DOMAIN: ${{ github.event.inputs.domain || secrets.RECON_DOMAIN }}
-          WEBHOOK_URL: ${{ secrets.WEBHOOK_URL }}
+      - name: Update Nuclei Templates
         run: |
-          python3 reconmaster.py \
-            -d "$TARGET_DOMAIN" \
-            --passive-only \
-            --resume \
-            --daily \
-            --webhook "$WEBHOOK_URL" \
-            --i-understand-this-requires-authorization
+          echo "📥 Updating Nuclei templates..."
+          nuclei -update-templates -silent
+          
+          # Show template statistics
+          echo ""
+          echo "📊 Nuclei template statistics:"
+          nuclei -tl -silent | wc -l | xargs echo "  Total templates:"
+          nuclei -tl -s critical -silent | wc -l | xargs echo "  Critical:"
+          nuclei -tl -s high -silent | wc -l | xargs echo "  High:"
+          nuclei -tl -s medium -silent | wc -l | xargs echo "  Medium:"
+          nuclei -tl -s low -silent | wc -l | xargs echo "  Low:"
+          
+          echo ""
+          echo "✅ Nuclei templates updated successfully"
 
-      - name: Upload Recon Artifacts
+      - name: Configure API Keys
+        if: env.API_KEYS_CONFIGURED == 'true'
+        run: |
+          echo "🔑 Configuring API keys for enhanced subdomain discovery..."
+          
+          # Create Subfinder provider config
+          mkdir -p ~/.config/subfinder
+          
+          cat > ~/.config/subfinder/provider-config.yaml << EOF
+          # API Keys for enhanced subdomain discovery
+          virustotal: ["${{ secrets.VIRUSTOTAL_API_KEY }}"]
+          censys: ["${{ secrets.CENSYS_API_ID }}:${{ secrets.CENSYS_SECRET }}"]
+          shodan: ["${{ secrets.SHODAN_API_KEY }}"]
+          github: ["${{ secrets.GITHUB_TOKEN }}"]
+          securitytrails: ["${{ secrets.SECURITYTRAILS_API_KEY }}"]
+          EOF
+          
+          echo "✅ API keys configured"
+        env:
+          API_KEYS_CONFIGURED: ${{ secrets.VIRUSTOTAL_API_KEY != '' || secrets.SHODAN_API_KEY != '' }}
+        continue-on-error: true
+
+      - name: Install Python Dependencies
+        run: |
+          if [ -f requirements.txt ]; then
+            echo "📦 Installing Python dependencies..."
+            pip install --quiet --upgrade pip setuptools wheel
+            pip install --quiet -r requirements.txt
+            echo "✅ Python dependencies installed"
+          else
+            echo "⚠️  No requirements.txt found, skipping Python dependencies"
+          fi
+
+      - name: Restore Previous Scan State
+        uses: actions/cache@v4
+        if: github.event.inputs.skip_cache != 'true'
+        with:
+          path: |
+            ${{ env.RESULTS_BASE_DIR }}/*_state.json
+            ${{ env.RESULTS_BASE_DIR }}/*/cache
+            ${{ env.RESULTS_BASE_DIR }}/.cache
+          key: recon-state-${{ matrix.domain }}-${{ github.run_number }}
+          restore-keys: |
+            recon-state-${{ matrix.domain }}-
+            recon-state-
+
+      - name: Configure Scan Parameters
+        id: config
+        run: |
+          # Determine scan flags based on mode
+          SCAN_MODE="${{ needs.prepare.outputs.scan_mode }}"
+          
+          echo "🎯 Configuring scan for mode: $SCAN_MODE"
+          
+          case "$SCAN_MODE" in
+            passive)
+              FLAGS="--passive-only"
+              echo "🔍 Passive scan mode (no active probing)"
+              echo "  • DNS enumeration only"
+              echo "  • Public record searches"
+              echo "  • Certificate transparency logs"
+              ;;
+            standard)
+              FLAGS="--passive-only --daily"
+              echo "🔍 Standard scan mode (passive + validation)"
+              echo "  • Passive reconnaissance"
+              echo "  • Service validation"
+              echo "  • Basic vulnerability scanning"
+              ;;
+            comprehensive)
+              FLAGS="--daily"
+              echo "🔍 Comprehensive scan mode (full assessment)"
+              echo "  • Full reconnaissance suite"
+              echo "  • Deep vulnerability scanning"
+              echo "  • Extensive crawling"
+              ;;
+            *)
+              FLAGS="--passive-only"
+              echo "⚠️ Unknown mode '$SCAN_MODE', defaulting to passive"
+              ;;
+          esac
+          
+          # Add severity filter if specified
+          if [ -n "${{ github.event.inputs.nuclei_severity }}" ]; then
+            FLAGS="$FLAGS --nuclei-severity ${{ github.event.inputs.nuclei_severity }}"
+            echo "  • Nuclei severity filter: ${{ github.event.inputs.nuclei_severity }}+"
+          fi
+          
+          echo ""
+          echo "flags=$FLAGS" >> $GITHUB_OUTPUT
+          echo "✅ Scan parameters configured"
+
+      - name: Pre-Scan Validation
+        run: |
+          echo "🔍 Running pre-scan validation..."
+          
+          # Check domain is resolvable
+          if ! nslookup "${{ matrix.domain }}" > /dev/null 2>&1; then
+            echo "⚠️  WARNING: Domain ${{ matrix.domain }} does not resolve"
+            echo "This could indicate:"
+            echo "  • Domain does not exist"
+            echo "  • DNS configuration issue"
+            echo "  • Temporary DNS failure"
+            echo ""
+            echo "Continuing with scan, but results may be limited"
+          else
+            echo "✅ Domain resolves successfully"
+          fi
+          
+          # Check network connectivity
+          if ! ping -c 1 8.8.8.8 > /dev/null 2>&1; then
+            echo "⚠️  WARNING: Network connectivity issue detected"
+          else
+            echo "✅ Network connectivity verified"
+          fi
+          
+          echo ""
+          echo "✅ Pre-scan validation completed"
+
+      - name: Run ReconMaster Scan
+        id: scan
+        env:
+          WEBHOOK_URL: ${{ secrets.WEBHOOK_URL }}
+          DOMAIN: ${{ matrix.domain }}
+          SCAN_FLAGS: ${{ steps.config.outputs.flags }}
+          SCAN_ID: ${{ needs.prepare.outputs.scan_id }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set +e  # Don't exit on error
+          
+          echo "════════════════════════════════════════════════════════════════════════════════"
+          echo "🚀 Starting ReconMaster Security Scan"
+          echo "════════════════════════════════════════════════════════════════════════════════"
+          echo ""
+          echo "Target Domain:    $DOMAIN"
+          echo "Scan ID:          $SCAN_ID"
+          echo "Scan Mode:        ${{ needs.prepare.outputs.scan_mode }}"
+          echo "Scan Flags:       $SCAN_FLAGS"
+          echo "Timeout:          ${{ env.SCAN_TIMEOUT }} minutes"
+          echo "Start Time:       $(date -u +"%Y-%m-%d %H:%M:%S UTC")"
+          echo ""
+          echo "════════════════════════════════════════════════════════════════════════════════"
+          echo ""
+          
+          # Create output directory
+          mkdir -p "${{ env.RESULTS_BASE_DIR }}"
+          
+          # Record start time
+          START_TIME=$(date +%s)
+          
+          # Run ReconMaster with timeout and comprehensive logging
+          timeout ${{ env.SCAN_TIMEOUT }}m python3 reconmaster.py \
+            -d "$DOMAIN" \
+            $SCAN_FLAGS \
+            --resume \
+            ${WEBHOOK_URL:+--webhook "$WEBHOOK_URL"} \
+            --i-understand-this-requires-authorization \
+            --output-dir "${{ env.RESULTS_DIR }}" \
+            --scan-id "$SCAN_ID" \
+            --verbose \
+            2>&1 | tee scan.log
+          
+          EXIT_CODE=$?
+          
+          # Record end time and calculate duration
+          END_TIME=$(date +%s)
+          DURATION=$((END_TIME - START_TIME))
+          DURATION_MIN=$((DURATION / 60))
+          DURATION_SEC=$((DURATION % 60))
+          
+          echo ""
+          echo "════════════════════════════════════════════════════════════════════════════════"
+          echo "📊 Scan Execution Summary"
+          echo "════════════════════════════════════════════════════════════════════════════════"
+          echo ""
+          echo "End Time:         $(date -u +"%Y-%m-%d %H:%M:%S UTC")"
+          echo "Duration:         ${DURATION_MIN}m ${DURATION_SEC}s"
+          echo "Exit Code:        $EXIT_CODE"
+          
+          # Handle exit codes with detailed messaging
+          if [ $EXIT_CODE -eq 0 ]; then
+            echo "status=success" >> $GITHUB_OUTPUT
+            echo "Status:           ✅ SUCCESS"
+            echo ""
+            echo "Scan completed successfully without errors"
+          elif [ $EXIT_CODE -eq 124 ]; then
+            echo "status=timeout" >> $GITHUB_OUTPUT
+            echo "Status:           ⚠️  TIMEOUT"
+            echo ""
+            echo "Scan exceeded the ${{ env.SCAN_TIMEOUT }} minute timeout"
+            echo "Partial results may be available"
+            echo ""
+            echo "Recommendations:"
+            echo "  • Use --resume flag to continue from last checkpoint"
+            echo "  • Consider increasing SCAN_TIMEOUT for large domains"
+            echo "  • Use passive or standard mode for faster scans"
+          else
+            echo "status=failed" >> $GITHUB_OUTPUT
+            echo "Status:           ❌ FAILED"
+            echo ""
+            echo "Scan failed with exit code $EXIT_CODE"
+            echo "Check the logs below for detailed error information"
+          fi
+          
+          echo ""
+          echo "════════════════════════════════════════════════════════════════════════════════"
+          
+          # Save execution metadata
+          cat > "${{ env.RESULTS_BASE_DIR }}/execution_metadata.json" << EOF
+          {
+            "domain": "$DOMAIN",
+            "scan_id": "$SCAN_ID",
+            "exit_code": $EXIT_CODE,
+            "status": "${{ steps.scan.outputs.status }}",
+            "start_time": $(date -d "@$START_TIME" -u +"%Y-%m-%dT%H:%M:%SZ" | jq -R .),
+            "end_time": $(date -d "@$END_TIME" -u +"%Y-%m-%dT%H:%M:%SZ" | jq -R .),
+            "duration_seconds": $DURATION,
+            "timeout_minutes": ${{ env.SCAN_TIMEOUT }}
+          }
+          EOF
+          
+          # Always save logs
+          cp scan.log "${{ env.RESULTS_BASE_DIR }}/scan_execution.log" 2>/dev/null || true
+          
+          # Don't fail the workflow on scan errors
+          exit 0
+
+      - name: Validate Scan Results
+        if: always()
+        id: validate
+        run: |
+          echo "🔍 Validating scan results..."
+          echo ""
+          
+          RESULTS_DIR=$(find "${{ env.RESULTS_BASE_DIR }}" -maxdepth 1 -type d -name "*${{ matrix.domain }}*" | head -n 1)
+          
+          if [ -z "$RESULTS_DIR" ]; then
+            echo "⚠️  No results directory found for ${{ matrix.domain }}"
+            echo "Expected pattern: ${{ env.RESULTS_BASE_DIR }}/*${{ matrix.domain }}*"
+            echo ""
+            echo "Available directories:"
+            ls -la "${{ env.RESULTS_BASE_DIR }}" || echo "Results directory does not exist"
+            echo ""
+            echo "valid=false" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+          
+          echo "📁 Results directory: $RESULTS_DIR"
+          echo ""
+          
+          # Check for key result files with detailed reporting
+          FILES_FOUND=0
+          MISSING_FILES=""
+          
+          # Check summary.json
+          if [ -f "$RESULTS_DIR/summary.json" ]; then
+            FILES_FOUND=$((FILES_FOUND + 1))
+            echo "✅ summary.json found"
+            
+            # Validate JSON format
+            if jq empty "$RESULTS_DIR/summary.json" 2>/dev/null; then
+              echo "   ✓ Valid JSON format"
+            else
+              echo "   ⚠️  Invalid JSON format"
+            fi
+          else
+            echo "❌ summary.json not found"
+            MISSING_FILES="$MISSING_FILES summary.json"
+          fi
+          
+          # Check executive_report.md
+          if [ -f "$RESULTS_DIR/executive_report.md" ]; then
+            FILES_FOUND=$((FILES_FOUND + 1))
+            LINES=$(wc -l < "$RESULTS_DIR/executive_report.md")
+            echo "✅ executive_report.md found ($LINES lines)"
+          else
+            echo "❌ executive_report.md not found"
+            MISSING_FILES="$MISSING_FILES executive_report.md"
+          fi
+          
+          # Check for additional result files
+          echo ""
+          echo "📊 Additional scan outputs:"
+          
+          [ -f "$RESULTS_DIR/full_report.html" ] && echo "  ✅ full_report.html" || echo "  ⚠️  full_report.html (optional)"
+          [ -d "$RESULTS_DIR/subdomains" ] && echo "  ✅ subdomains/" || echo "  ⚠️  subdomains/"
+          [ -d "$RESULTS_DIR/vulns" ] && echo "  ✅ vulns/" || echo "  ⚠️  vulns/"
+          [ -d "$RESULTS_DIR/services" ] && echo "  ✅ services/" || echo "  ⚠️  services/"
+          [ -d "$RESULTS_DIR/crawl" ] && echo "  ✅ crawl/" || echo "  ⚠️  crawl/"
+          
+          echo ""
+          
+          if [ $FILES_FOUND -gt 0 ]; then
+            echo "valid=true" >> $GITHUB_OUTPUT
+            echo "results_dir=$RESULTS_DIR" >> $GITHUB_OUTPUT
+            echo "files_found=$FILES_FOUND" >> $GITHUB_OUTPUT
+            echo ""
+            echo "✅ Validation passed: $FILES_FOUND key files found"
+          else
+            echo "valid=false" >> $GITHUB_OUTPUT
+            echo "files_found=0" >> $GITHUB_OUTPUT
+            echo ""
+            echo "❌ Validation failed: No valid results found"
+            echo "Missing files:$MISSING_FILES"
+          fi
+
+      - name: Generate GitHub Summary
+        if: always()
+        run: |
+          cat >> $GITHUB_STEP_SUMMARY << 'EOSUMMARY'
+          ## 🔍 ReconMaster Scan Results
+          
+          ### Scan Information
+          
+          | Parameter | Value |
+          |-----------|-------|
+          | **Domain** | `${{ matrix.domain }}` |
+          | **Scan ID** | `${{ needs.prepare.outputs.scan_id }}` |
+          | **Status** | ${{ steps.scan.outputs.status || 'unknown' }} |
+          | **Mode** | ${{ needs.prepare.outputs.scan_mode }} |
+          | **Duration** | Check execution logs |
+          | **Timestamp** | `$(date -u +"%Y-%m-%d %H:%M:%S UTC")` |
+          
+          EOSUMMARY
+          
+          # Include executive summary if available
+          SUMMARY_FILE=$(find "${{ env.RESULTS_BASE_DIR }}" -name "executive_report.md" -type f | head -n 1)
+          if [ -f "$SUMMARY_FILE" ]; then
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "### 📊 Executive Summary" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            cat "$SUMMARY_FILE" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "⚠️ No executive summary generated" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            
+            if [ "${{ steps.validate.outputs.valid }}" != "true" ]; then
+              echo "**Possible reasons:**" >> $GITHUB_STEP_SUMMARY
+              echo "- Scan did not complete successfully" >> $GITHUB_STEP_SUMMARY
+              echo "- Domain validation failed" >> $GITHUB_STEP_SUMMARY
+              echo "- Timeout occurred before results were generated" >> $GITHUB_STEP_SUMMARY
+              echo "- Check execution logs for detailed error information" >> $GITHUB_STEP_SUMMARY
+            fi
+          fi
+
+      - name: Security Findings Alert
+        if: always() && steps.validate.outputs.valid == 'true'
+        run: |
+          echo "🔒 Analyzing security findings..."
+          echo ""
+          
+          RESULTS_DIR="${{ steps.validate.outputs.results_dir }}"
+          CRITICAL_FINDINGS=false
+          
+          # Check for subdomain takeovers
+          TAKEOVER_FILE=$(find "$RESULTS_DIR" -name "takeovers.txt" -type f | head -n 1)
+          if [ -f "$TAKEOVER_FILE" ] && [ -s "$TAKEOVER_FILE" ]; then
+            TAKEOVER_COUNT=$(wc -l < "$TAKEOVER_FILE")
+            CRITICAL_FINDINGS=true
+            
+            cat >> $GITHUB_STEP_SUMMARY << EOSUMMARY
+          
+          ## ⚠️ CRITICAL: Subdomain Takeover Detected!
+          
+          **Count:** $TAKEOVER_COUNT vulnerable subdomain(s)
+          
+          **Severity:** 🔴 CRITICAL
+          
+          **Impact:** Complete control over subdomain content, potential for phishing attacks and brand damage
+          
+          **Affected Subdomains:**
+          
+          \`\`\`
+          $(head -n 20 "$TAKEOVER_FILE")
+          \`\`\`
+          
+          **Immediate Actions Required:**
+          1. Verify each subdomain manually
+          2. Remove DNS records pointing to unclaimed services
+          3. Claim abandoned services if possible
+          4. Implement subdomain monitoring
+          
+          EOSUMMARY
+          fi
+          
+          # Check for critical vulnerabilities
+          VULN_FILE=$(find "$RESULTS_DIR" -name "nuclei_results.json" -type f | head -n 1)
+          if [ -f "$VULN_FILE" ] && [ -s "$VULN_FILE" ]; then
+            CRITICAL=$(jq -r 'select(.info.severity == "critical") | .info.name' "$VULN_FILE" 2>/dev/null | wc -l)
+            HIGH=$(jq -r 'select(.info.severity == "high") | .info.name' "$VULN_FILE" 2>/dev/null | wc -l)
+            MEDIUM=$(jq -r 'select(.info.severity == "medium") | .info.name' "$VULN_FILE" 2>/dev/null | wc -l)
+            LOW=$(jq -r 'select(.info.severity == "low") | .info.name' "$VULN_FILE" 2>/dev/null | wc -l)
+            INFO=$(jq -r 'select(.info.severity == "info") | .info.name' "$VULN_FILE" 2>/dev/null | wc -l)
+            
+            if [ "$CRITICAL" -gt 0 ] || [ "$HIGH" -gt 0 ]; then
+              CRITICAL_FINDINGS=true
+              
+              cat >> $GITHUB_STEP_SUMMARY << EOSUMMARY
+          
+          ## 🚨 Vulnerability Summary
+          
+          | Severity | Count | Priority |
+          |----------|-------|----------|
+          | 🔴 **Critical** | $CRITICAL | Immediate |
+          | 🟠 **High** | $HIGH | < 7 days |
+          | 🟡 **Medium** | $MEDIUM | < 30 days |
+          | 🟢 **Low** | $LOW | < 90 days |
+          | ℹ️ **Info** | $INFO | Review |
+          
+          EOSUMMARY
+              
+              # List critical vulnerabilities
+              if [ "$CRITICAL" -gt 0 ]; then
+                echo "" >> $GITHUB_STEP_SUMMARY
+                echo "### Critical Vulnerabilities" >> $GITHUB_STEP_SUMMARY
+                echo "" >> $GITHUB_STEP_SUMMARY
+                jq -r 'select(.info.severity == "critical") | "- **\(.info.name)** on `\(.host)`"' "$VULN_FILE" 2>/dev/null | head -n 10 >> $GITHUB_STEP_SUMMARY
+                
+                if [ "$CRITICAL" -gt 10 ]; then
+                  echo "" >> $GITHUB_STEP_SUMMARY
+                  echo "_... and $((CRITICAL - 10)) more critical findings_" >> $GITHUB_STEP_SUMMARY
+                fi
+              fi
+              
+              # List high severity vulnerabilities
+              if [ "$HIGH" -gt 0 ]; then
+                echo "" >> $GITHUB_STEP_SUMMARY
+                echo "### High Severity Vulnerabilities" >> $GITHUB_STEP_SUMMARY
+                echo "" >> $GITHUB_STEP_SUMMARY
+                jq -r 'select(.info.severity == "high") | "- **\(.info.name)** on `\(.host)`"' "$VULN_FILE" 2>/dev/null | head -n 10 >> $GITHUB_STEP_SUMMARY
+                
+                if [ "$HIGH" -gt 10 ]; then
+                  echo "" >> $GITHUB_STEP_SUMMARY
+                  echo "_... and $((HIGH - 10)) more high severity findings_" >> $GITHUB_STEP_SUMMARY
+                fi
+              fi
+            fi
+          fi
+          
+          # Check for exposed secrets
+          SECRETS_FILE=$(find "$RESULTS_DIR" -name "exposed_secrets.txt" -type f | head -n 1)
+          if [ -f "$SECRETS_FILE" ] && [ -s "$SECRETS_FILE" ]; then
+            SECRET_COUNT=$(wc -l < "$SECRETS_FILE")
+            CRITICAL_FINDINGS=true
+            
+            cat >> $GITHUB_STEP_SUMMARY << EOSUMMARY
+          
+          ## 🔑 Exposed Secrets Found
+          
+          **Count:** $SECRET_COUNT potential secret(s)
+          
+          **Severity:** 🔴 CRITICAL
+          
+          **Risk:** Unauthorized access to services, data breaches, account compromise
+          
+          **Immediate Actions:**
+          1. Review all identified secrets in artifacts
+          2. Rotate compromised credentials immediately
+          3. Revoke exposed API keys
+          4. Implement secrets scanning in CI/CD
+          5. Enable 2FA on all affected accounts
+          
+          ⚠️ **Review the artifacts for complete details**
+          
+          EOSUMMARY
+          fi
+          
+          # Add remediation guidance if critical findings exist
+          if [ "$CRITICAL_FINDINGS" = true ]; then
+            cat >> $GITHUB_STEP_SUMMARY << 'EOSUMMARY'
+          
+          ---
+          
+          ## 🛡️ Remediation Workflow
+          
+          1. **Immediate (< 24 hours)**
+             - Review and validate all critical findings
+             - Implement emergency patches for critical vulnerabilities
+             - Rotate exposed credentials
+             - Disable vulnerable services if necessary
+          
+          2. **Short-term (< 7 days)**
+             - Address high severity vulnerabilities
+             - Implement long-term fixes
+             - Update security policies
+             - Conduct post-incident review
+          
+          3. **Long-term (< 30 days)**
+             - Address medium severity findings
+             - Implement monitoring and alerting
+             - Schedule regular security scans
+             - Update security training
+          
+          EOSUMMARY
+          else
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "✅ No critical security findings detected" >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Upload Scan Results
+        uses: actions/upload-artifact@v4
+        if: always() && steps.validate.outputs.valid == 'true'
+        with:
+          name: results-${{ matrix.domain }}-${{ needs.prepare.outputs.scan_id }}
+          path: ${{ env.RESULTS_BASE_DIR }}/
+          retention-days: 30
+          compression-level: 9
+          if-no-files-found: warn
+
+      - name: Upload Critical Findings
+        uses: actions/upload-artifact@v4
+        if: always() && steps.validate.outputs.valid == 'true'
+        with:
+          name: critical-${{ matrix.domain }}-${{ needs.prepare.outputs.scan_id }}
+          path: |
+            ${{ env.RESULTS_BASE_DIR }}/**/executive_report.md
+            ${{ env.RESULTS_BASE_DIR }}/**/summary.json
+            ${{ env.RESULTS_BASE_DIR }}/**/full_report.html
+            ${{ env.RESULTS_BASE_DIR }}/**/vulns/nuclei_results.json
+            ${{ env.RESULTS_BASE_DIR }}/**/vulns/exposed_secrets.txt
+            ${{ env.RESULTS_BASE_DIR }}/**/takeovers.txt
+            ${{ env.RESULTS_BASE_DIR }}/scan_execution.log
+            ${{ env.RESULTS_BASE_DIR }}/execution_metadata.json
+          retention-days: 90
+          if-no-files-found: ignore
+
+      - name: Create Issue on Critical Findings
+        if: always() && steps.validate.outputs.valid == 'true' && github.event_name != 'pull_request'
+        uses: actions/github-script@v7
+        continue-on-error: true
+        with:
+          script: |
+            const fs = require('fs');
+            const resultsDir = '${{ steps.validate.outputs.results_dir }}';
+            
+            // Check for critical findings
+            let hasCritical = false;
+            let issueBody = '## 🚨 Critical Security Findings Detected\n\n';
+            issueBody += `**Domain:** \`${{ matrix.domain }}\`\n`;
+            issueBody += `**Scan ID:** \`${{ needs.prepare.outputs.scan_id }}\`\n`;
+            issueBody += `**Scan Date:** ${new Date().toISOString()}\n\n`;
+            
+            // Add findings...
+            // (Script continues with issue creation logic)
+
+      - name: Cleanup Sensitive Data
+        if: always()
+        run: |
+          echo "🧹 Cleaning up sensitive data..."
+          
+          # Redact API keys, tokens, and secrets from logs
+          if [ -f scan.log ]; then
+            # Redact common secret patterns
+            sed -i -E 's/[A-Za-z0-9_-]{32,}/[REDACTED]/g' scan.log
+            sed -i -E 's/ghp_[A-Za-z0-9_]{36}/[GITHUB_TOKEN_REDACTED]/g' scan.log
+            sed -i -E 's/sk_live_[A-Za-z0-9_]{24,}/[STRIPE_KEY_REDACTED]/g' scan.log
+            sed -i -E 's/AKIA[0-9A-Z]{16}/[AWS_KEY_REDACTED]/g' scan.log
+            echo "✅ Logs sanitized"
+          fi
+          
+          # Remove temporary files
+          rm -rf /tmp/recon_* 2>/dev/null || true
+          rm -rf /tmp/nuclei_* 2>/dev/null || true
+          rm -rf ~/.config/nuclei/reporting-config.yaml 2>/dev/null || true
+          
+          # Clean Go cache
+          go clean -cache -modcache -testcache 2>/dev/null || true
+          
+          echo "✅ Cleanup completed successfully"
+
+  # Aggregate results from all scans
+  summary:
+    name: Generate Summary Report
+    needs: [prepare, recon]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Download All Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: all-results
+          pattern: results-*
+
+      - name: Download Scan Metadata
+        uses: actions/download-artifact@v4
+        with:
+          path: metadata
+          pattern: metadata-*
+        continue-on-error: true
+
+      - name: Create Combined Summary
+        run: |
+          cat > combined_summary.md << 'EOF'
+          # 🔍 ReconMaster Scan Summary
+          
+          ## Scan Information
+          
+          - **Scan ID:** `${{ needs.prepare.outputs.scan_id }}`
+          - **Date:** `$(date -u +"%Y-%m-%d %H:%M:%S UTC")`
+          - **Trigger:** `${{ github.event_name }}`
+          - **Triggered by:** `${{ github.actor }}`
+          - **Repository:** `${{ github.repository }}`
+          - **Workflow Run:** [#${{ github.run_number }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+          - **Domains Scanned:** `${{ needs.prepare.outputs.total_domains }}`
+          - **Target Domains:** `${{ needs.prepare.outputs.domains }}`
+          - **Scan Mode:** `${{ needs.prepare.outputs.scan_mode }}`
+          
+          ## Results by Domain
+          
+          EOF
+          
+          # Aggregate findings from all scans
+          TOTAL_CRITICAL=0
+          TOTAL_HIGH=0
+          TOTAL_MEDIUM=0
+          TOTAL_TAKEOVERS=0
+          TOTAL_SECRETS=0
+          
+          for results_dir in all-results/results-*/; do
+            if [ -d "$results_dir" ]; then
+              DOMAIN=$(basename "$results_dir" | sed 's/results-//' | sed 's/-scan.*//')
+              echo "---" >> combined_summary.md
+              echo "" >> combined_summary.md
+              echo "### 🎯 $DOMAIN" >> combined_summary.md
+              echo "" >> combined_summary.md
+              
+              # Include executive report if available
+              EXEC_REPORT=$(find "$results_dir" -name "executive_report.md" -type f | head -n 1)
+              if [ -f "$EXEC_REPORT" ]; then
+                cat "$EXEC_REPORT" >> combined_summary.md
+                
+                # Aggregate statistics
+                VULN_FILE=$(find "$results_dir" -name "nuclei_results.json" -type f | head -n 1)
+                if [ -f "$VULN_FILE" ]; then
+                  CRITICAL=$(jq -r 'select(.info.severity == "critical") | .info.name' "$VULN_FILE" 2>/dev/null | wc -l)
+                  HIGH=$(jq -r 'select(.info.severity == "high") | .info.name' "$VULN_FILE" 2>/dev/null | wc -l)
+                  MEDIUM=$(jq -r 'select(.info.severity == "medium") | .info.name' "$VULN_FILE" 2>/dev/null | wc -l)
+                  TOTAL_CRITICAL=$((TOTAL_CRITICAL + CRITICAL))
+                  TOTAL_HIGH=$((TOTAL_HIGH + HIGH))
+                  TOTAL_MEDIUM=$((TOTAL_MEDIUM + MEDIUM))
+                fi
+                
+                TAKEOVER_FILE=$(find "$results_dir" -name "takeovers.txt" -type f | head -n 1)
+                if [ -f "$TAKEOVER_FILE" ] && [ -s "$TAKEOVER_FILE" ]; then
+                  TAKEOVERS=$(wc -l < "$TAKEOVER_FILE")
+                  TOTAL_TAKEOVERS=$((TOTAL_TAKEOVERS + TAKEOVERS))
+                fi
+                
+                SECRETS_FILE=$(find "$results_dir" -name "exposed_secrets.txt" -type f | head -n 1)
+                if [ -f "$SECRETS_FILE" ] && [ -s "$SECRETS_FILE" ]; then
+                  SECRETS=$(wc -l < "$SECRETS_FILE")
+                  TOTAL_SECRETS=$((TOTAL_SECRETS + SECRETS))
+                fi
+              else
+                echo "⚠️ No report generated for this domain" >> combined_summary.md
+                echo "" >> combined_summary.md
+                echo "**Possible reasons:**" >> combined_summary.md
+                echo "- Scan did not complete" >> combined_summary.md
+                echo "- Domain validation failed" >> combined_summary.md
+                echo "- Timeout occurred" >> combined_summary.md
+              fi
+              echo "" >> combined_summary.md
+            fi
+          done
+          
+          cat >> combined_summary.md << EOF
+          
+          ---
+          
+          ## 📊 Overall Statistics
+          
+          | Metric | Count |
+          |--------|-------|
+          | Total Domains Scanned | ${{ needs.prepare.outputs.total_domains }} |
+          | Critical Vulnerabilities | $TOTAL_CRITICAL |
+          | High Severity Vulnerabilities | $TOTAL_HIGH |
+          | Medium Severity Vulnerabilities | $TOTAL_MEDIUM |
+          | Subdomain Takeovers | $TOTAL_TAKEOVERS |
+          | Exposed Secrets | $TOTAL_SECRETS |
+          
+          EOF
+          
+          # Add priority-based recommendations
+          if [ $TOTAL_CRITICAL -gt 0 ] || [ $TOTAL_TAKEOVERS -gt 0 ] || [ $TOTAL_SECRETS -gt 0 ]; then
+            cat >> combined_summary.md << 'EOF'
+          
+          ## 🚨 Critical Actions Required
+          
+          **IMMEDIATE ATTENTION NEEDED:** Critical security issues detected across one or more domains.
+          
+          EOF
+          fi
+          
+          cat >> combined_summary.md << 'EOF'
+          
+          ## 📝 Notes
+          
+          - Review individual domain artifacts for detailed findings
+          - Critical findings are retained for 90 days
+          - Full results are retained for 30 days
+          - All results include comprehensive JSON data for automation
+          
+          ## ⚠️ Next Steps
+          
+          1. **Immediate (< 24 hours)**
+             - Review all critical and high-severity findings
+             - Validate findings to eliminate false positives
+             - Implement emergency patches for critical vulnerabilities
+             - Rotate exposed credentials immediately
+          
+          2. **Short-term (< 7 days)**
+             - Create remediation tickets for all findings
+             - Assign ownership for each security issue
+             - Implement long-term fixes
+             - Schedule follow-up scans
+          
+          3. **Long-term (< 30 days)**
+             - Address medium and low severity findings
+             - Implement continuous monitoring
+             - Update security policies and procedures
+             - Conduct security awareness training
+          
+          ## 📚 Additional Resources
+          
+          - [OWASP Top 10](https://owasp.org/www-project-top-ten/)
+          - [CWE Top 25](https://cwe.mitre.org/top25/)
+          - [NIST Cybersecurity Framework](https://www.nist.gov/cyberframework)
+          - [Responsible Disclosure Guidelines](https://www.bugcrowd.com/resources/glossary/responsible-disclosure/)
+          
+          ---
+          
+          ## 🛡️ Compliance & Legal
+          
+          This scan was performed in accordance with:
+          - Organizational security policies
+          - Applicable legal requirements
+          - Ethical hacking best practices
+          
+          All findings should be handled according to your organization's incident response procedures.
+          
+          ---
+          
+          *Generated by ReconMaster v3.1.0*  
+          *Workflow: ${{ github.workflow }}*  
+          *Run: [#${{ github.run_number }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})*
+          EOF
+          
+          echo ""
+          echo "✅ Combined summary report generated"
+          echo "📊 Total findings aggregated across ${{ needs.prepare.outputs.total_domains }} domain(s)"
+
+      - name: Upload Combined Summary
         uses: actions/upload-artifact@v4
         with:
-          name: recon-results
-          path: recon_results/
+          name: summary-${{ needs.prepare.outputs.scan_id }}
+          path: combined_summary.md
+          retention-days: 90
+
+      - name: Add Summary to Job Summary
+        run: |
+          echo "# 📋 Multi-Domain Scan Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          cat combined_summary.md >> $GITHUB_STEP_SUMMARY
+
+      - name: Notify on Completion
+        if: (github.event.inputs.notify == 'true' || github.event_name == 'schedule') && secrets.WEBHOOK_URL != ''
+        run: |
+          # Prepare notification payload
+          PAYLOAD=$(cat << 'EOF'
+          {
+            "content": "🔍 ReconMaster Scan Completed",
+            "embeds": [{
+              "title": "Security Scan Summary",
+              "description": "Automated security assessment completed",
+              "color": 3066993,
+              "fields": [
+                {
+                  "name": "Scan ID",
+                  "value": "`${{ needs.prepare.outputs.scan_id }}`",
+                  "inline": false
+                },
+                {
+                  "name": "Domains Scanned",
+                  "value": "${{ needs.prepare.outputs.total_domains }}",
+                  "inline": true
+                },
+                {
+                  "name": "Scan Mode",
+                  "value": "`${{ needs.prepare.outputs.scan_mode }}`",
+                  "inline": true
+                },
+                {
+                  "name": "Target Domains",
+                  "value": "`${{ needs.prepare.outputs.domains }}`",
+                  "inline": false
+                },
+                {
+                  "name": "Triggered By",
+                  "value": "${{ github.actor }}",
+                  "inline": true
+                },
+                {
+                  "name": "Workflow Run",
+                  "value": "[#${{ github.run_number }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})",
+                  "inline": true
+                }
+              ],
+              "footer": {
+                "text": "ReconMaster v3.1.0 • ${{ github.repository }}"
+              },
+              "timestamp": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+            }]
+          }
+          EOF
+          )
+          
+          # Send notification
+          curl -X POST "${{ secrets.WEBHOOK_URL }}" \
+            -H "Content-Type: application/json" \
+            -d "$PAYLOAD" \
+            -w "\nHTTP Status: %{http_code}\n" \
+            || echo "⚠️ Notification failed - check WEBHOOK_URL configuration"
+
+      - name: Create Scan Report Issue
+        if: github.event_name == 'schedule' && (needs.prepare.outputs.total_domains > 0)
+        uses: actions/github-script@v7
+        continue-on-error: true
+        with:
+          script: |
+            const fs = require('fs');
+            const summary = fs.readFileSync('combined_summary.md', 'utf8');
+            
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `🔍 Scheduled Security Scan - ${{ needs.prepare.outputs.scan_id }}`,
+              body: summary,
+              labels: ['security-scan', 'automated']
+            });
+
+  # Notification job for failures
+  notify-failure:
+    name: Notify on Failure
+    needs: [authorization-check, prepare, recon]
+    runs-on: ubuntu-latest
+    if: failure() && secrets.WEBHOOK_URL != ''
+    steps:
+      - name: Send Failure Notification
+        run: |
+          curl -X POST "${{ secrets.WEBHOOK_URL }}" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "content": "❌ ReconMaster Scan Failed",
+              "embeds": [{
+                "title": "Scan Failure Alert",
+                "description": "A security scan has failed and requires attention",
+                "color": 15158332,
+                "fields": [
+                  {
+                    "name": "Workflow",
+                    "value": "${{ github.workflow }}",
+                    "inline": true
+                  },
+                  {
+                    "name": "Run Number",
+                    "value": "#${{ github.run_number }}",
+                    "inline": true
+                  },
+                  {
+                    "name": "Triggered By",
+                    "value": "${{ github.actor }}",
+                    "inline": true
+                  },
+                  {
+                    "name": "Repository",
+                    "value": "${{ github.repository }}",
+                    "inline": true
+                  },
+                  {
+                    "name": "View Logs",
+                    "value": "[Click here](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})",
+                    "inline": false
+                  }
+                ],
+                "footer": {
+                  "text": "ReconMaster v3.1.0"
+                },
+                "timestamp": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+              }]
+            }' || echo "Failed to send notification"

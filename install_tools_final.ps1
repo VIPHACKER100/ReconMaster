@@ -39,8 +39,13 @@ foreach ($tool in $tools) {
         Invoke-WebRequest -Uri $tool.url -OutFile $zipPath -ErrorAction Stop
         Expand-Archive -Path $zipPath -DestinationPath $tempDir -Force
         
-        # Find the executable (some zips have subdirectories or different names)
-        $exe = Get-ChildItem -Path $tempDir -Filter "*.exe" -Recurse | Where-Object { $_.Name -like "*$($tool.name)*" -or $_.Name -eq "amass.exe" } | Select-Object -First 1
+        # Find the executable (more robust search)
+        $exe = Get-ChildItem -Path $tempDir -Filter "*.exe" -Recurse | Where-Object { 
+            $_.Name -like "*$($tool.name)*" -or 
+            $_.Name -eq "amass.exe" -or 
+            ($tool.name -eq "assetfinder" -and $_.Name -like "assetfinder*")
+        } | Select-Object -First 1
+        
         if ($exe) {
             Move-Item -Path $exe.FullName -Destination $destFile -Force
             Write-Host "[+] $($tool.name) installed successfully." -ForegroundColor Green

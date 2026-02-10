@@ -231,6 +231,7 @@ class ReconMaster:
 
         # Initialize semaphore for concurrency control
         self.semaphore = asyncio.Semaphore(self.threads)
+        self.ffuf_semaphore = asyncio.Semaphore(5)  # Limit parallel ffuf chunks
         self.screenshot_semaphore = asyncio.Semaphore(3)  # Limit parallel screenshots
         self.circuit_breaker = CircuitBreaker(threshold=self.CIRCUIT_BREAKER_THRESHOLD, timeout=self.CIRCUIT_BREAKER_COOLDOWN)
 
@@ -672,7 +673,8 @@ class ReconMaster:
                     "-t", "30",
                     "-rate", "75"
                 ]
-                await self._run_command(cmd, timeout=300)
+                async with self.ffuf_semaphore:
+                    await self._run_command(cmd, timeout=600)
 
                 # Parse chunk results
                 if os.path.exists(ffuf_raw):
@@ -1136,6 +1138,7 @@ class ReconMaster:
                                 all_secrets.append(m)
 
             if all_secrets:
+                os.makedirs(os.path.dirname(self.files["exposed_secrets"]), exist_ok=True)
                 with open(self.files["exposed_secrets"], "a") as f:
                     for s in all_secrets:
                         f.write(f"[JS Secret] {s}\n")
@@ -1258,6 +1261,7 @@ class ReconMaster:
 
             found = await asyncio.gather(*tasks)
 
+            os.makedirs(os.path.dirname(self.files["exposed_secrets"]), exist_ok=True)
             with open(self.files["exposed_secrets"], "a") as f:
                 for target in filter(None, found):
                     print(f"{Colors.YELLOW}[!] Sensitive file exposed: {target}{Colors.ENDC}")
@@ -1756,6 +1760,7 @@ class ReconMaster:
                 "info": len([v for v in self.vulns if v.get("info", {}).get("severity") == "info"])
             }
         }
+        os.makedirs(os.path.dirname(self.files["summary"]), exist_ok=True)
         with open(self.files["summary"], "w", encoding="utf-8") as f:
             json.dump(summary_data, f, indent=4)
 

@@ -1,4 +1,4 @@
-name: ReconMaster Daily Recon
+name: ReconMaster beta Daily Recon
 
 on:
   workflow_dispatch:

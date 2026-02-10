@@ -1,4 +1,4 @@
-name: ReconMaster Advanced Security Scan
+name: ReconMaster Elite Security Scan
 
 on:
   workflow_dispatch:
@@ -15,7 +15,7 @@ on:
         options:
           - passive
           - standard
-          - comprehensive
+          - elite-comprehensive
       notify:
         description: "Send notifications"
         required: false
@@ -82,7 +82,7 @@ jobs:
       - name: Display Legal Notice
         run: |
           echo "════════════════════════════════════════════════════════════════════════════════"
-          echo "⚠️                         LEGAL NOTICE                                      ⚠️"
+          echo "⚠️                    ELITE SECURITY NOTICE                                  ⚠️"
           echo "════════════════════════════════════════════════════════════════════════════════"
           echo ""
           echo "This security scanning tool must ONLY be used on domains you own or for which"
@@ -524,10 +524,12 @@ jobs:
               echo "  • Service validation"
               echo "  • Basic vulnerability scanning"
               ;;
-            comprehensive)
+            elite-comprehensive)
               FLAGS="--daily"
-              echo "🔍 Comprehensive scan mode (full assessment)"
+              echo "🔍 Elite Comprehensive mode (Full Assessment + VIP SQLi)"
               echo "  • Full reconnaissance suite"
+              echo "  • VIP SQLi Engine (Heuristics + Nuclei)"
+              echo "  • Multi-Cloud Proactive Discovery"
               echo "  • Deep vulnerability scanning"
               echo "  • Extensive crawling"
               ;;
@@ -586,7 +588,7 @@ jobs:
           set +e  # Don't exit on error
           
           echo "════════════════════════════════════════════════════════════════════════════════"
-          echo "🚀 Starting ReconMaster Security Scan"
+          echo "🚀 Starting ReconMaster Elite Security Scan"
           echo "════════════════════════════════════════════════════════════════════════════════"
           echo ""
           echo "Target Domain:    $DOMAIN"
@@ -612,7 +614,7 @@ jobs:
             --resume \
             ${WEBHOOK_URL:+--webhook "$WEBHOOK_URL"} \
             --i-understand-this-requires-authorization \
-            --output-dir "${{ env.RESULTS_DIR }}" \
+            --output-dir "${{ env.RESULTS_BASE_DIR }}" \
             --scan-id "$SCAN_ID" \
             --verbose \
             2>&1 | tee scan.log
@@ -765,7 +767,7 @@ jobs:
         if: always()
         run: |
           cat >> $GITHUB_STEP_SUMMARY << 'EOSUMMARY'
-          ## 🔍 ReconMaster Scan Results
+          ## 🛰️ ReconMaster Elite Scan Results
           
           ### Scan Information
           

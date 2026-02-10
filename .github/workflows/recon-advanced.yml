@@ -1,4 +1,4 @@
-name: ReconMaster Advanced Daily Recon
+name: ReconMaster Elite Advanced Daily Recon
 
 on:
   workflow_dispatch:
@@ -15,7 +15,7 @@ on:
         options:
           - passive-only
           - daily
-          - full
+          - elite-full
   schedule:
     - cron: "0 3 * * *"   # Daily at 03:00 UTC
 
@@ -130,7 +130,7 @@ jobs:
             daily)
               FLAGS="--passive-only --daily"
               ;;
-            full)
+            elite-full)
               FLAGS="--daily"
               ;;
           esac
@@ -152,7 +152,7 @@ jobs:
         run: |
           SUMMARY_FILE=$(find recon_results -name "executive_report.md" -type f | head -n 1)
           if [ -f "$SUMMARY_FILE" ]; then
-            echo "## Recon Executive Summary for ${{ matrix.domain }}" >> $GITHUB_STEP_SUMMARY
+            echo "## Recon Elite Summary for ${{ matrix.domain }}" >> $GITHUB_STEP_SUMMARY
             cat "$SUMMARY_FILE" >> $GITHUB_STEP_SUMMARY
           fi
 

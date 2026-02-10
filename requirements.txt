@@ -1,4 +1,4 @@
-# ReconMaster v3.1.0-Pro Requirements
+# ReconMaster v3.2.0-Elite Requirements
 # Optimized for Python 3.9+ 
 
 # Core Dependencies

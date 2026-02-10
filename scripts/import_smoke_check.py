@@ -50,15 +50,12 @@ def smoke_check():
             except Exception:
                 pass
 
-    print('\n=== Summary ===')
-    if failures:
-        print(f"{len(failures)} module(s) failed to import:")
-        for name, tb in failures:
-            print(f"- {name}")
-        sys.exit(2)
-    else:
-        print("All imports OK")
-        sys.exit(0)
-
-if __name__ == "__main__":
-    smoke_check()
+print('\n=== Summary ===')
+if failures:
+    print(f"{len(failures)} module(s) failed to import:")
+    for name, tb in failures:
+        print(f"- {name}")
+    sys.exit(2)
+else:
+    print("All imports OK")
+    sys.exit(0)

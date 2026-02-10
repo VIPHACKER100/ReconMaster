@@ -116,6 +116,9 @@ class ReconMaster:
         self.php_wordlist = os.path.join(base_path, "wordlists", "php_fuzz.txt")
         self.params_wordlist = os.path.join(base_path, "wordlists", "params.txt")
         self.resolvers = os.path.join(base_path, "wordlists", "resolvers.txt")
+        self.api_wordlist = os.path.join(base_path, "wordlists", "api_endpoints.txt")
+        self.common_wordlist = os.path.join(base_path, "wordlists", "common.txt")
+        self.quickhits_wordlist = os.path.join(base_path, "wordlists", "quickhits.txt")
 
         # Pro features
         self.webhook_url = None
@@ -720,6 +723,22 @@ class ReconMaster:
         print(f"{Colors.BLUE}[*] Discovering sensitive files...{Colors.ENDC}")
 
         sensitive_paths = [".env", ".git/config", ".vscode/settings.json", "config.php.bak", "web.config", "robots.txt", "sitemap.xml", ".htaccess"]
+        
+        # Load from Pro wordlists if available
+        for wl in [self.quickhits_wordlist, self.common_wordlist]:
+            if os.path.exists(wl):
+                try:
+                    with open(wl, "r") as f:
+                        for line in f:
+                            p = line.strip()
+                            if p and p not in sensitive_paths:
+                                sensitive_paths.append(p)
+                except Exception as e:
+                    logger.warning(f"Failed to load wordlist {wl}: {e}")
+
+        # Deduplicate and limit for safety (limit to 100 paths total to avoid noise)
+        sensitive_paths = list(dict.fromkeys(sensitive_paths))[:100]
+        
         results_file = os.path.join(self.output_dir, "vulns", "sensitive_files.txt")
 
         # Explicitly configure sessions and connectors
@@ -758,6 +777,53 @@ class ReconMaster:
                         "info": {"name": "Sensitive File Exposed", "severity": "medium"},
                         "matched-at": target
                     })
+
+    async def fuzz_api_endpoints(self):
+        """Discover hidden API endpoints using specialized pro wordlist"""
+        if not _HAVE_AIOHTTP:
+            logger.warning("aiohttp not available, skipping API endpoint fuzzing.")
+            return
+
+        if not self.live_domains or not os.path.exists(self.api_wordlist):
+            return
+
+        print(f"{Colors.BLUE}[*] Fuzzing for hidden API endpoints...{Colors.ENDC}")
+        results_file = os.path.join(self.output_dir, "endpoints", "api_fuzz_results.txt")
+        
+        # Load API endpoints
+        api_paths = []
+        try:
+            with open(self.api_wordlist, "r") as f:
+                api_paths = [line.strip() for line in f if line.strip()]
+        except Exception as e:
+            logger.error(f"Error reading API wordlist: {e}")
+            return
+
+        connector = aiohttp.TCPConnector(ssl=False, limit=self.threads)
+        async with aiohttp.ClientSession(timeout=HTTP_TIMEOUT, connector=connector) as session:
+            async def check_api(base_url, path):
+                target = f"{base_url.rstrip('/')}/{path.lstrip('/')}"
+                try:
+                    async with session.get(target, timeout=5) as resp:
+                        if resp.status in [200, 201, 401, 403]: # Interested in access or restricted
+                            return target, resp.status
+                except Exception:
+                    pass
+                return None
+
+            tasks = []
+            for base_url in list(self.live_domains)[:10]: # Limit targets for performance
+                for path in api_paths[:50]: # First 50 for quick check
+                    tasks.append(check_api(base_url, path))
+
+            found = await asyncio.gather(*tasks)
+            
+            with open(results_file, "w") as f:
+                for res in filter(None, found):
+                    target, status = res
+                    f.write(f"[{status}] {target}\n")
+                    if status == 200:
+                        print(f"{Colors.CYAN}[+] Discovered API Endpoint: {target}{Colors.ENDC}")
 
     async def find_parameters(self):
         """Passive parameter discovery"""
@@ -1007,7 +1073,8 @@ async def run_recon(recon, args):
             recon.scan_vulnerabilities(),
             recon.take_screenshots(),
             recon.crawl_and_extract(),
-            recon.discover_sensitive_files()
+            recon.discover_sensitive_files(),
+            recon.fuzz_api_endpoints()
         )
 
         # Sequence dependent tasks
@@ -1017,7 +1084,10 @@ async def run_recon(recon, args):
 
     elif recon.daily:
         # Specialized light-weight automation mode
-        await recon.scan_vulnerabilities()
+        await asyncio.gather(
+            recon.scan_vulnerabilities(),
+            recon.fuzz_api_endpoints()
+        )
         # Daily diff MUST run after discovery and vulnerability scan
         recon.handle_daily_diff()
     else:

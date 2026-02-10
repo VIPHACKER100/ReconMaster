@@ -29,6 +29,21 @@ $lists = @(
         name = "resolvers.txt"
         url  = "https://raw.githubusercontent.com/trickest/resolvers/main/resolvers.txt"
         dest = "resolvers.txt"
+    },
+    @{
+        name = "api_endpoints.txt"
+        url  = "https://raw.githubusercontent.com/danielmiessler/SecLists/master/Discovery/Web-Content/api/api-endpoints.txt"
+        dest = "api_endpoints.txt"
+    },
+    @{
+        name = "common_files.txt"
+        url  = "https://raw.githubusercontent.com/danielmiessler/SecLists/master/Discovery/Web-Content/common.txt"
+        dest = "common.txt"
+    },
+    @{
+        name = "quickhits.txt"
+        url  = "https://raw.githubusercontent.com/danielmiessler/SecLists/master/Discovery/Web-Content/quickhits.txt"
+        dest = "quickhits.txt"
     }
 )
 

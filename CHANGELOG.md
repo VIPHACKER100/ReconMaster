@@ -12,11 +12,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - **Elite Reports**: Enhanced Markdown summaries with AI-driven threat profiles and regression alerts.
 - **Premium Branding**: New SVG-based animated logo and high-fidelity project assets.
 - **Windows Power-Up Installer**: Refactored PowerShell script for the full Pro toolset.
+- **Multi-Source Configuration**: Support for `RECON_TARGET`, `RECON_DOMAIN`, and `TARGET_DOMAIN` environment variables for flexible target specification.
 
 ### Fixed
 - **CI/CD Stabilization**: Removed legacy LinkFinder submodule/dependencies to resolve GitHub Actions checkout errors.
 - **Async Logic**: Fixed SyntaxError in sensitive file discovery module.
 - **Dependency Map**: Unified `requirements.txt` with infrastructure and optional power-up libraries.
+- **Domain Validation**: Enhanced `validate_target` method with input sanitization (stripping whitespace/dots) and robust empty/single-dot detection.
+- **CLI UX**: Improved help messages and error reporting for target specification.
+- **Stability**: Fixed premature `handle_daily_diff` call in `main`; moved to post-scan phase for accurate regression analysis.
+- **Maintenance**: Ensured robust temporary file cleanup using `try/finally` blocks for gowitness and ffuf modules.
+- **Endpoint Analysis**: Improved JS endpoint filtering logic to reduce false positives from single characters and root paths.
+- **Reliability**: Unified circuit breaker thresholds across asynchronous scanning modules.
+- **Performance**: Removed redundant state loading on initialization.
 
 ## [3.0.0-Pro] - 2026-02-08 - ReconMaster v3 Asynchronous Rewrite
 

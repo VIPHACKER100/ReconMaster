@@ -1,0 +1,245 @@
+name: ReconMaster Advanced Daily Recon
+
+on:
+  workflow_dispatch:
+    inputs:
+      domain:
+        description: "Target domain (overrides scheduled domains)"
+        required: false
+        type: string
+      scan_mode:
+        description: "Scan mode"
+        required: false
+        default: "daily"
+        type: choice
+        options:
+          - passive-only
+          - daily
+          - full
+  schedule:
+    - cron: "0 3 * * *"   # Daily at 03:00 UTC
+
+env:
+  # For scheduled runs, configure your domains here or use repository secrets
+  # Comma-separated list of domains to scan on schedule
+  SCHEDULED_DOMAINS: ${{ secrets.RECON_DOMAINS || secrets.RECON_DOMAIN }}
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      domains: ${{ steps.set-domains.outputs.domains }}
+      matrix: ${{ steps.set-domains.outputs.matrix }}
+    steps:
+      - name: Set Domain Matrix
+        id: set-domains
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ -n "${{ github.event.inputs.domain }}" ]; then
+            # Manual run with specific domain
+            DOMAINS="${{ github.event.inputs.domain }}"
+          elif [ -n "$SCHEDULED_DOMAINS" ]; then
+            # Scheduled run with configured domains
+            DOMAINS="$SCHEDULED_DOMAINS"
+          else
+            echo "Error: No domains configured!"
+            echo ""
+            echo "Please either:"
+            echo "1. Set RECON_DOMAIN or RECON_DOMAINS secret in repository settings"
+            echo "2. Manually trigger the workflow with a domain input"
+            exit 1
+          fi
+          
+          # Convert comma-separated list to JSON array
+          MATRIX=$(echo "$DOMAINS" | tr ',' '\n' | jq -R -s -c 'split("\n") | map(select(length > 0))')
+          echo "domains=$DOMAINS" >> $GITHUB_OUTPUT
+          echo "matrix=$MATRIX" >> $GITHUB_OUTPUT
+          echo "Will scan domains: $DOMAINS"
+
+  recon:
+    needs: prepare
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    strategy:
+      fail-fast: false
+      matrix:
+        domain: ${{ fromJson(needs.prepare.outputs.matrix) }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.21'
+
+      - name: Cache Go modules
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/go/pkg/mod
+            ~/go/bin
+          key: ${{ runner.os }}-go-recon-tools-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-recon-tools-
+
+      - name: Install system dependencies
+        run: |
+          sudo apt update
+          sudo apt install -y nmap jq chromium-browser
+
+      - name: Install Recon Tools
+        run: |
+          # Check if tools are already cached
+          if ! command -v subfinder &> /dev/null; then
+            echo "Installing recon tools..."
+            go install github.com/projectdiscovery/subfinder/v2/cmd/subfinder@latest
+            go install github.com/projectdiscovery/httpx/cmd/httpx@latest
+            go install github.com/projectdiscovery/nuclei/v3/cmd/nuclei@latest
+            go install github.com/projectdiscovery/dnsx/cmd/dnsx@latest
+            go install github.com/projectdiscovery/katana/cmd/katana@latest
+            go install github.com/ffuf/ffuf@latest
+            go install github.com/sensepost/gowitness@latest
+            go install github.com/tomnomnom/assetfinder@latest
+            go install github.com/owasp-amass/amass/v4/...@latest
+          else
+            echo "Tools already installed (from cache)"
+          fi
+          echo "$HOME/go/bin" >> $GITHUB_PATH
+
+      - name: Update Nuclei Templates
+        run: |
+          nuclei -update-templates
+
+      - name: Install Python deps
+        run: |
+          if [ -f requirements.txt ]; then
+            pip install -r requirements.txt
+          fi
+
+      - name: Restore Previous State
+        uses: actions/cache@v4
+        with:
+          path: recon_results/*_state.json
+          key: recon-state-${{ matrix.domain }}-${{ github.run_number }}
+          restore-keys: |
+            recon-state-${{ matrix.domain }}-
+
+      - name: Run ReconMaster
+        env:
+          WEBHOOK_URL: ${{ secrets.WEBHOOK_URL }}
+          SCAN_MODE: ${{ github.event.inputs.scan_mode || 'daily' }}
+        run: |
+          # Determine scan flags
+          FLAGS=""
+          case "$SCAN_MODE" in
+            passive-only)
+              FLAGS="--passive-only"
+              ;;
+            daily)
+              FLAGS="--passive-only --daily"
+              ;;
+            full)
+              FLAGS="--daily"
+              ;;
+          esac
+          
+          # Run ReconMaster
+          python3 reconmaster_fixed.py \
+            -d "${{ matrix.domain }}" \
+            $FLAGS \
+            --resume \
+            ${WEBHOOK_URL:+--webhook "$WEBHOOK_URL"} \
+            --i-understand-this-requires-authorization \
+            || {
+              echo "ReconMaster failed for ${{ matrix.domain }}"
+              exit 1
+            }
+
+      - name: Generate Summary for GitHub
+        if: always()
+        run: |
+          SUMMARY_FILE=$(find recon_results -name "RECON_SUMMARY.md" -type f | head -n 1)
+          if [ -f "$SUMMARY_FILE" ]; then
+            echo "## Recon Summary for ${{ matrix.domain }}" >> $GITHUB_STEP_SUMMARY
+            cat "$SUMMARY_FILE" >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Upload Recon Artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: recon-results-${{ matrix.domain }}-${{ github.run_number }}
+          path: recon_results/
+          retention-days: 30
+          compression-level: 9
+
+      - name: Upload Critical Findings
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: critical-findings-${{ matrix.domain }}-${{ github.run_number }}
+          path: |
+            recon_results/**/reports/RECON_SUMMARY.md
+            recon_results/**/vulns/*.json
+            recon_results/**/vulns/takeovers.txt
+          retention-days: 90
+
+      - name: Check for Critical Issues
+        if: always()
+        run: |
+          # Check for subdomain takeovers
+          TAKEOVER_FILE=$(find recon_results -name "takeovers.txt" -type f | head -n 1)
+          if [ -f "$TAKEOVER_FILE" ] && [ -s "$TAKEOVER_FILE" ]; then
+            echo "⚠️ CRITICAL: Subdomain takeovers detected!" >> $GITHUB_STEP_SUMMARY
+            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+            cat "$TAKEOVER_FILE" >> $GITHUB_STEP_SUMMARY
+            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          # Check for critical vulnerabilities
+          VULN_FILE=$(find recon_results -name "nuclei_results.json" -type f | head -n 1)
+          if [ -f "$VULN_FILE" ]; then
+            CRITICAL_COUNT=$(jq -r 'select(.info.severity == "critical") | .info.name' "$VULN_FILE" 2>/dev/null | wc -l)
+            if [ "$CRITICAL_COUNT" -gt 0 ]; then
+              echo "⚠️ Found $CRITICAL_COUNT critical vulnerabilities" >> $GITHUB_STEP_SUMMARY
+            fi
+          fi
+
+  summary:
+    needs: [prepare, recon]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: all-results
+
+      - name: Create Combined Summary
+        run: |
+          echo "# ReconMaster Scan Summary" > combined_summary.md
+          echo "" >> combined_summary.md
+          echo "**Run Date:** $(date -u)" >> combined_summary.md
+          echo "**Trigger:** ${{ github.event_name }}" >> combined_summary.md
+          echo "**Domains Scanned:** ${{ needs.prepare.outputs.domains }}" >> combined_summary.md
+          echo "" >> combined_summary.md
+          
+          # Find all summary files
+          find all-results -name "RECON_SUMMARY.md" -type f | while read -r file; do
+            echo "---" >> combined_summary.md
+            cat "$file" >> combined_summary.md
+            echo "" >> combined_summary.md
+          done
+
+      - name: Upload Combined Summary
+        uses: actions/upload-artifact@v4
+        with:
+          name: combined-summary-${{ github.run_number }}
+          path: combined_summary.md
+          retention-days: 90

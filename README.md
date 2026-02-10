@@ -62,7 +62,8 @@ ReconMaster isn't just a wrapper; it's a dedicated orchestration engine built on
 ### 🔒 Security Hardened
 - **Managed Concurrency**: Global semaphores prevent network saturation and system lockups
 - **OpSec Hardened**: Randomized User-Agents, circuit breakers for WAF detection, and absolute path verification
-- **Zero-Trust Architecture**: All inputs validated, all outputs sanitized
+- **Zero-Trust Architecture**: All inputs automatically sanitized and validated (stripping whitespace/trailing dots), all outputs secured against path traversal
+- **Robust Cleanup**: Strict `try/finally` patterns ensure all temporary workspace files are purged, even on scan failure
 
 ### 🎯 Precision Targeting
 - **Scope Enforcement**: Strict domain and regex filtering across all modules
@@ -137,6 +138,7 @@ graph LR
 - **Scope Enforcement**: Strict domain and regex filtering across all modules
 - **Error Recovery**: Automatic retry with exponential backoff
 - **Resource Monitoring**: Real-time CPU, memory, and network tracking
+- **Unified Circuit Breaker**: Consistent failure thresholds (10 errors) across all high-velocity modules (JS, Sensitive Files, Discovery) to protect against WAF blocks
 
 ### 🔌 Extensibility & Automation
 
@@ -567,8 +569,10 @@ advanced:
 ### Environment Variables
 
 ```bash
-# Target domain
+# Target configuration (supports multiple names for compatibility)
+export RECON_TARGET="example.com"
 export RECON_DOMAIN="example.com"
+export TARGET_DOMAIN="example.com"
 
 # Webhook for notifications
 export WEBHOOK_URL="https://discord.com/api/webhooks/YOUR_WEBHOOK"

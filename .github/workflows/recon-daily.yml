@@ -1,0 +1,98 @@
+name: ReconMaster Daily Recon
+
+on:
+  workflow_dispatch:
+    inputs:
+      domain:
+        description: "Target domain"
+        required: true
+        type: string
+  schedule:
+    - cron: "0 3 * * *"   # Daily at 03:00 UTC
+
+jobs:
+  recon:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.21'
+
+      - name: Install system dependencies
+        run: |
+          sudo apt update
+          sudo apt install -y nmap jq chromium-browser
+
+      - name: Install Recon Tools
+        run: |
+          go install github.com/projectdiscovery/subfinder/v2/cmd/subfinder@latest
+          go install github.com/projectdiscovery/httpx/cmd/httpx@latest
+          go install github.com/projectdiscovery/nuclei/v3/cmd/nuclei@latest
+          go install github.com/projectdiscovery/dnsx/cmd/dnsx@latest
+          go install github.com/projectdiscovery/katana/cmd/katana@latest
+          go install github.com/ffuf/ffuf@latest
+          go install github.com/sensepost/gowitness@latest
+          go install github.com/tomnomnom/assetfinder@latest
+          go install github.com/owasp-amass/amass/v4/...@latest
+          echo "$HOME/go/bin" >> $GITHUB_PATH
+
+      - name: Install Python deps
+        run: pip install -r requirements.txt
+
+      - name: Determine Target Domain
+        id: set-domain
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "domain=${{ github.event.inputs.domain }}" >> $GITHUB_OUTPUT
+          else
+            echo "domain=${{ secrets.RECON_DOMAIN }}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Validate Domain
+        run: |
+          if [ -z "${{ steps.set-domain.outputs.domain }}" ]; then
+            echo "Error: No domain specified!"
+            echo "For scheduled runs, set the RECON_DOMAIN secret in your repository settings."
+            echo "For manual runs, provide the domain in the workflow input."
+            exit 1
+          fi
+          echo "Target domain: ${{ steps.set-domain.outputs.domain }}"
+
+      - name: Run ReconMaster
+        env:
+          WEBHOOK_URL: ${{ secrets.WEBHOOK_URL }}
+        run: |
+          python3 reconmaster_fixed.py \
+            -d "${{ steps.set-domain.outputs.domain }}" \
+            --passive-only \
+            --resume \
+            --daily \
+            ${WEBHOOK_URL:+--webhook "$WEBHOOK_URL"} \
+            --i-understand-this-requires-authorization
+
+      - name: Upload Recon Artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: recon-results-${{ steps.set-domain.outputs.domain }}-${{ github.run_number }}
+          path: recon_results/
+          retention-days: 30
+
+      - name: Upload Summary Report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: summary-report-${{ github.run_number }}
+          path: recon_results/**/reports/RECON_SUMMARY.md
+          retention-days: 90

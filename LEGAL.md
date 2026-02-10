@@ -205,6 +205,6 @@ The authors reserve the right to modify these terms at any time. Continued use c
 
 ---
 
-**Last Updated**: 2026-02-08
+**Last Updated**: 2026-02-10
 
 **For questions about legal compliance**, consult with qualified legal counsel in your jurisdiction.

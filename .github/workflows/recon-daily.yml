@@ -73,7 +73,7 @@ jobs:
         env:
           WEBHOOK_URL: ${{ secrets.WEBHOOK_URL }}
         run: |
-          python3 reconmaster_fixed.py \
+          python3 reconmaster.py \
             -d "${{ steps.set-domain.outputs.domain }}" \
             --passive-only \
             --resume \

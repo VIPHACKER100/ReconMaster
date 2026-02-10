@@ -6,7 +6,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [3.1.0-Pro] - 2026-02-10 - Elite Intelligence & API Discovery (Current)
 
-### Added
+- **Elite Intelligence Integration**: Native support for **Censys**, **SecurityTrails**, and **VirusTotal** APIs to boost passive discovery yield.
 - **AI Threat Profiler**: Heuristic intelligence engine for automated risk analysis and remediation advice.
 - **Regression Recon Engine**: State-aware diffing to identify new subdomains and vulnerabilities across scans.
 - **Hidden API Fuzzer**: Specialized module (`fuzz_api_endpoints`) using elite Pro wordlists to discover undocumented API routes.
@@ -23,6 +23,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - **Progress Tracking**: Real-time progress indicators for passive discovery tasks.
 
 ### Fixed
+- **Windows Performance**: Parallelized `active_subdomain_enum` using `asyncio.gather` for significantly faster brute-forcing on Windows consoles.
+- **Path Sanitization**: Fixed `WinError 123` and `Errno 22` by stripping protocols and invalid characters from target-based output paths.
+- **Windows Compatibility**: Automated UTF-8 encoding configuration and `colorama` initialization for reliable terminal output.
+- **Tool Resolution**: Enhanced `verify_tools` to support custom `bin/` and `tools/` path injection for portable installations.
 - **CI/CD Stabilization**: Removed legacy LinkFinder submodule/dependencies to resolve GitHub Actions checkout errors.
 - **Async Logic**: Fixed SyntaxError in sensitive file discovery module.
 - **Dependency Map**: Unified `requirements.txt` with infrastructure and optional power-up libraries.

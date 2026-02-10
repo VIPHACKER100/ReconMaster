@@ -283,6 +283,16 @@ Or edit filtering logic in code.
 ### Q: What happens if I get rate-limited by a target?
 **A:** The **Circuit Breaker** module will detect consistent 403 or 429 errors and automatically enter a "Cooldown" state, pausing requests for that target to protect your IP reputation and allow the target's WAF to recover.
 
+### Q: How do I configure my Censys, SecurityTrails, or VirusTotal API keys?
+**A:** You can set them as environment variables in your terminal before running a scan:
+```powershell
+$env:CENSYS_API_ID="Xq9..."
+$env:CENSYS_API_SECRET="5oQ..."
+$env:SECURITYTRAILS_API_KEY="wf2..."
+$env:VIRUSTOTAL_API_KEY="430..."
+```
+ReconMaster will automatically detect these and inject them into compatible tools (`subfinder`, `Amass`, etc.) for significantly enhanced discovery depth.
+
 ## Getting More Help
 
 - **Documentation**: See [README.md](../README.md)

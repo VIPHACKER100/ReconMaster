@@ -11,7 +11,7 @@
 <p align="center">
   <img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License">
   <img src="https://img.shields.io/badge/Python-3.9+-brightgreen.svg" alt="Python">
-  <img src="https://img.shields.io/badge/Version-3.1.0-gold.svg" alt="Version">
+  <img src="https://img.shields.io/badge/Version-3.1.0--Pro-gold.svg" alt="Version">
   <img src="https://img.shields.io/badge/Status-Production--Ready-success.svg" alt="Status">
   <img src="https://img.shields.io/badge/Async-Powered-00F2FF.svg" alt="Async">
   <img src="https://img.shields.io/badge/Docker-Supported-2496ED.svg" alt="Docker">
@@ -81,9 +81,10 @@ ReconMaster isn't just a wrapper; it's a dedicated orchestration engine built on
 <td width="50%">
 
 #### Multi-Source Enumeration
-- **Subfinder**: Passive DNS aggregation
+- **Elite Intelligence**: Native support for **Censys**, **SecurityTrails**, and **VT** APIs.
+- **Subfinder**: Passive DNS aggregation (Pro Configured)
 - **Assetfinder**: Cross-platform asset discovery
-- **Amass**: Advanced DNS enumeration
+- **Amass**: Advanced DNS enumeration (OSINT Hardened)
 - **Unified Deduplication**: Smart merging across all sources
 
 </td>
@@ -608,6 +609,8 @@ export WEBHOOK_URL="https://discord.com/api/webhooks/YOUR_WEBHOOK"
 export SHODAN_API_KEY="your_key_here"
 export CENSYS_API_ID="your_id_here"
 export CENSYS_API_SECRET="your_secret_here"
+export SECURITYTRAILS_API_KEY="your_key_here"
+export VIRUSTOTAL_API_KEY="your_key_here"
 
 # Output directory
 export RECON_OUTPUT_DIR="/path/to/results"

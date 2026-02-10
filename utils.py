@@ -7,13 +7,20 @@ import shutil
 from typing import List, Optional
 
 
-def safe_run(cmd, timeout: Optional[int] = None):
+def safe_run(cmd, timeout: Optional[int] = None, env: Optional[dict] = None):
     """Run a command safely with robust group-level timeout termination.
 
     cmd can be a list (preferred) or a string. Returns (stdout, stderr, returncode).
     """
     local_bin = os.path.join(os.path.dirname(os.path.abspath(__file__)), "bin")
-    env = os.environ.copy()
+    if env is None:
+        env = os.environ.copy()
+    else:
+        # Merge passed env with system env for PATH consistency
+        base_env = os.environ.copy()
+        base_env.update(env)
+        env = base_env
+
     if os.path.exists(local_bin):
         env["PATH"] = local_bin + os.pathsep + env.get("PATH", "")
 

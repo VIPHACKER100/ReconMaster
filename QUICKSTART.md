@@ -26,14 +26,24 @@ python monitor/scheduler.py --daemon
 ```
 
 ### ⚙️ Configuration (Pro Feature)
-ReconMaster now supports `config.yaml` for persistent settings.
+ReconMaster now supports `config.yaml` and environment variables for persistent settings and API keys.
+
+#### Environment Variables for Intelligence:
+```powershell
+$env:CENSYS_API_ID="your_id"
+$env:CENSYS_API_SECRET="your_secret"
+$env:SECURITYTRAILS_API_KEY="your_key"
+$env:VIRUSTOTAL_API_KEY="your_key"
+```
+
+#### YAML Config (Alternative):
+Place a `config.yaml` in the root directory:
 ```yaml
 scan:
   threads: 20
 notifications:
   webhook_url: "your_discord_webhook"
 ```
-Place it in the root directory to be loaded automatically.
 
 ### ☁️ CI/CD Automation
 Use the **Advanced Security Scan** workflow in GitHub Actions:

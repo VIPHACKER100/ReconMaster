@@ -10,7 +10,7 @@ The author assumes **no liability** for any misuse, damage, or illegal activitie
 
 ## Internal Security Features
 ReconMaster v3.1.0-Pro implements several internal security controls:
-- **Sensitive Data Redaction**: Log filters automatically redact API keys (Google, AWS, GitHub, etc.) and passwords.
+- **Sensitive Data Redaction**: Log filters automatically redact API keys (**Censys, SecurityTrails, VirusTotal**, Google, AWS, GitHub, etc.) and passwords.
 - **Circuit Breaker**: Protects against WAF blocking and rate limiting by auto-throttling requests.
 - **Path Traversal Protection**: All file writes are sandboxed using strict path verification.
 - **Command Injection Protection**: Defensive sanitization of dynamic inputs used in shell commands.

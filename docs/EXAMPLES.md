@@ -208,6 +208,31 @@ wget https://raw.githubusercontent.com/n0kovo/n0kovo_subdomains/master/n0kovo_su
 
 # Second pass with larger wordlist
 python3 reconmaster.py -d example.com -w n0kovo_subdomains.txt -o ~/recon/extended
+
+---
+
+### Example 18: Elite OSINT Intelligence (v3.1.0-Pro)
+
+**Scenario**: Maximum passive discovery utilizing premium API sources.
+
+**Setup**:
+```bash
+# Inject credentials into environment (Redacted in logs)
+export CENSYS_API_ID="Xq9Fjcf..."
+export CENSYS_API_SECRET="5oQsVfK..."
+export SECURITYTRAILS_API_KEY="wf256DD..."
+export VIRUSTOTAL_API_KEY="4305df5..."
+```
+
+**Run it**:
+```bash
+python3 reconmaster.py -d target.com --passive-only --i-understand-this-requires-authorization
+```
+
+**Results**:
+- **Censys**: Discovers non-indexed subdomains via SSL/TLS certificate history.
+- **SecurityTrails**: Fetches instantaneous historical DNS records.
+- **VirusTotal**: Correlates subdomains found in malware communication logs and historical hashes.
 ```
 
 ---

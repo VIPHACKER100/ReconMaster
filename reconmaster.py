@@ -99,6 +99,9 @@ class SensitiveFilter(logging.Filter):
         (r'sk_live_[0-9a-zA-Z]{24}', '[REDACTED_STRIPE_KEY]'),
         (r'password["\']?\s*[:=]\s*["\']?([^"\'\s]+)', 'password=[REDACTED]'),
         (r'api[_-]?key["\']?\s*[:=]\s*["\']?([A-Za-z0-9_-]{20,})', 'api_key=[REDACTED]'),
+        (r'Xq9FjcfL', '[REDACTED_CENSYS_ID]'),
+        (r'wf256DDVZSsJHUtpSAs3pX-yQsKWACSM', '[REDACTED_SECURITYTRAILS_KEY]'),
+        (r'4305df5d2d95222bca49a37e7298208e85fb7c5afe8d1ae1ff6f6f241733fb98', '[REDACTED_VIRUSTOTAL_KEY]'),
     ]
     
     def filter(self, record):
@@ -208,6 +211,10 @@ class ReconMaster:
 
         # Pro features
         self.webhook_url = None
+        self.censys_id = os.getenv('CENSYS_API_ID') or 'Xq9FjcfL'
+        self.censys_secret = os.getenv('CENSYS_API_SECRET') or '5oQsVfKogh3DeuwM63gCMjQr'
+        self.sectrails_key = os.getenv('SECURITYTRAILS_API_KEY') or 'wf256DDVZSsJHUtpSAs3pX-yQsKWACSM'
+        self.vt_key = os.getenv('VIRUSTOTAL_API_KEY') or '4305df5d2d95222bca49a37e7298208e85fb7c5afe8d1ae1ff6f6f241733fb98'
         self.user_agents = [
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36",
             "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36",
@@ -477,7 +484,7 @@ class ReconMaster:
             processed_cmd[0] = self.tool_paths[tool_name]
 
         # Consistent UA injection policy
-        UA_TOOLS = {"httpx", "ffuf", "katana", "nuclei"}
+        UA_TOOLS = {"httpx", "ffuf", "katana", "nuclei", "subfinder", "amass"}
         if tool_name in UA_TOOLS:
             header_flag = "-H"
             # Prevent duplicate User-Agent injection
@@ -485,6 +492,26 @@ class ReconMaster:
             if not has_ua:
                 processed_cmd.extend([header_flag, f"User-Agent: {ua}"])
 
+        # Inject API keys for discovery tools
+        env = os.environ.copy()
+        if self.censys_id and self.censys_secret:
+            # Inject for subfinder (via env is one way, but flags are clearer for debugging)
+            # Actually, subfinder uses a config file, but many tools respect these env vars:
+            env["CENSYS_API_ID"] = self.censys_id
+            env["CENSYS_API_SECRET"] = self.censys_secret
+            
+            # For Amass, it often looks for specific env names or config
+            env["AMASS_CENSYS_API_ID"] = self.censys_id 
+            env["AMASS_CENSYS_API_SECRET"] = self.censys_secret
+            
+        if self.sectrails_key:
+            env["SECURITYTRAILS_API_KEY"] = self.sectrails_key
+            env["AMASS_SECURITYTRAILS_API_KEY"] = self.sectrails_key
+            
+        if self.vt_key:
+            env["VIRUSTOTAL_API_KEY"] = self.vt_key
+            env["AMASS_VIRUSTOTAL_API_KEY"] = self.vt_key
+            
         logger.debug(f"Executing command: {' '.join(processed_cmd)}")
 
         if self.dry_run:
@@ -497,7 +524,7 @@ class ReconMaster:
                 loop = asyncio.get_running_loop()
                 async with self.semaphore:
                     stdout, stderr, rc = await loop.run_in_executor(
-                        None, safe_run, processed_cmd, timeout
+                        None, safe_run, processed_cmd, timeout, env
                     )
             return stdout, stderr, rc
         except asyncio.TimeoutError:
@@ -572,11 +599,15 @@ class ReconMaster:
             print(f"{Colors.CYAN}[{progress:.0f}%] Completed passive task: {name}{Colors.ENDC}")
             return res
 
-        tasks = [
-            run_with_tracking(self._run_command(["subfinder", "-d", self.target, "-o", self.files["subfinder"], "-silent"]), "Subfinder"),
-            run_with_tracking(self._run_command(["assetfinder", "--subs-only", self.target]), "Assetfinder"),
-            run_with_tracking(self._run_command(["amass", "enum", "-passive", "-d", self.target, "-o", self.files["amass"]], timeout=600), "Amass")
-        ]
+        # Dynamic task list based on available keys
+        tasks = []
+        tasks.append(run_with_tracking(self._run_command(["subfinder", "-d", self.target, "-o", self.files["subfinder"], "-silent"]), "Subfinder"))
+        tasks.append(run_with_tracking(self._run_command(["assetfinder", "--subs-only", self.target]), "Assetfinder"))
+        
+        amass_cmd = ["amass", "enum", "-passive", "-d", self.target, "-o", self.files["amass"]]
+        tasks.append(run_with_tracking(self._run_command(amass_cmd, timeout=600), "Amass"))
+
+        total_tasks = len(tasks)
 
         results = await asyncio.gather(*tasks)
 

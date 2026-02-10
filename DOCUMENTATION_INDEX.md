@@ -1,6 +1,6 @@
-# ReconMaster v3.1.0-Pro Documentation Index
+# ReconMaster v3.2.0-Elite Documentation Index
 
-**Framework Version:** 3.1.0-Pro  
+**Framework Version:** 3.2.0-Elite 💎  
 **Architecture:** Asynchronous Core ⚡  
 **Last Updated:** February 10, 2026
 
@@ -10,7 +10,7 @@
 
 ### 1. Project Overview
 - **[README.md](README.md)**: Main entry point, features, and quick installation.
-- **[CHANGELOG.md](CHANGELOG.md)**: Full history including the v3. Asynchronous Rewrite.
+- **[CHANGELOG.md](CHANGELOG.md)**: Full history including the Elite updates.
 - **[.github/workflows/recon-security-scan.yml](.github/workflows/recon-security-scan.yml)**: Advanced CI/CD scan workflow.
 
 ### 2. Getting Started
@@ -20,7 +20,7 @@
 ### 3. Monitoring & Specialized Guides
 - **[MONITORING.md](MONITORING.md)**: Continuous security monitoring and alerting setup.
 - **[DOCKER_GUIDE.md](DOCKER_GUIDE.md)**: Containerized deployment and Kubernetes integration.
-- **[BRANDING.md](BRANDING.md)**: Overview of professional output styles and themes.
+- **[PROJECT_STATUS.md](PROJECT_STATUS.md)**: Real-time implementation and milestone tracking.
 
 ---
 
@@ -39,18 +39,16 @@
 
 ## 🚀 Version Comparison
 
-| Feature | v2.x (Legacy) | v3.1.0-Pro (Latest) |
-|---------|---------------|---------------------|
-| Engine | Synchronous / Threaded | **Asynchronous Core (asyncio)** |
-| Speed | Standard | **High-Velocity Parallelism** |
-| Vuln Scan | Subzy Only | **Full Nuclei Integration** |
-| Crawling | Basic | **Katana Pro Integration** |
-| Reporting | Text-Only | **Markdown & JSON Telemetry** |
-| Windows | Unstable Timeouts | **100% Native Reliability** |
+| Feature | v3.1.0-Pro | v3.2.0-Elite (Latest) |
+|---------|------------|-----------------------|
+| SQLi Scan | Nuclei Templates | **Native VIP SQLi Engine** |
+| Cloud Scan | Manual | **Automated Multi-Cloud Discovery** |
+| Reporting | Standard HTML | **Premium Dashboard 2.0 (Chart.js)** |
+| Engine | Async Core | **Hardened JIT Resilience** |
 
 ---
 
 **Last Updated:** February 10, 2026  
-**Framework Version:** 3.1.0-Pro  
+**Framework Version:** 3.2.0-Elite  
 **Maintained by:** VIPHACKER100 ( Aryan Ahirwar )  
 **GitHub Repository:** [VIPHACKER100/ReconMaster](https://github.com/VIPHACKER100/ReconMaster)

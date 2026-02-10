@@ -384,4 +384,4 @@ For maintainer questions or to volunteer:
 ---
 
 **Last Updated:** February 10, 2026  
-**Version:** 3.1.0-Pro
+**Version:** 3.2.0-Elite

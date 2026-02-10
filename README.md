@@ -6,12 +6,12 @@
   <i>Empowering Bug Bounty Hunters and Security Engineers</i>
 </p>
 
-# 🛰️ ReconMaster v3.1.0
+# 🛰️ ReconMaster v3.2.0-Elite
 
 <p align="center">
   <img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License">
   <img src="https://img.shields.io/badge/Python-3.9+-brightgreen.svg" alt="Python">
-  <img src="https://img.shields.io/badge/Version-3.1.0--Pro-gold.svg" alt="Version">
+  <img src="https://img.shields.io/badge/Version-3.2.0--Elite-red.svg" alt="Version">
   <img src="https://img.shields.io/badge/Status-Production--Ready-success.svg" alt="Status">
   <img src="https://img.shields.io/badge/Async-Powered-00F2FF.svg" alt="Async">
   <img src="https://img.shields.io/badge/Docker-Supported-2496ED.svg" alt="Docker">
@@ -102,10 +102,10 @@ ReconMaster isn't just a wrapper; it's a dedicated orchestration engine built on
 <td width="50%">
 
 #### Vulnerability Detection
-- **Nuclei Integration**: 5000+ templates
-- **Tech-Aware Strategy**: Automatic profiling and targeting
-- **Custom Template Support**: Plugin your own checks
-- **CVE Correlation**: Real-time vulnerability mapping
+- **VIP SQLi Scanner**: High-fidelity native SQL injection detection engine.
+- **Nuclei Integration**: 5000+ templates with real-time updates.
+- **Tech-Aware Strategy**: Automatic profiling and targeting.
+- **CVE Correlation**: Real-time vulnerability mapping.
 
 </td>
 <td width="50%">
@@ -139,9 +139,11 @@ graph LR
 - **Scope Enforcement**: Strict domain and regex filtering across all modules
 - **Error Recovery**: Automatic retry with exponential backoff
 - **Resource Monitoring**: Real-time CPU, memory, and network tracking
-- **Unified Circuit Breaker**: Consistent failure thresholds (10 errors) across all high-velocity modules (JS, Sensitive Files, Discovery, API Fuzzing) to protect against WAF blocks
-- **API Fuzzing Engine**: Specialized discovery of undocumented endpoints using `api_endpoints.txt`
-- **Sensitive Path Intelligence**: High-velocity scanning for `common.txt` and `quickhits.txt` assets
+- **Unified Circuit Breaker**: Consistent failure thresholds (10 errors) to protect against WAF blocks.
+- **API Fuzzing Engine**: Specialized discovery of undocumented endpoints.
+- **Sensitive Path Intelligence**: High-velocity scanning for sensitive assets.
+- **Premium Dashboard 2.0**: Interactive HTML reports with Chart.js visualizations.
+- **Multi-Cloud Discovery**: Proactive S3, Azure Blob, and GCP Storage asset probing.
 
 ### 🔌 Extensibility & Automation
 
@@ -591,7 +593,7 @@ advanced:
     https: ""
   
   custom_headers:
-    User-Agent: "ReconMaster/3.1.0"
+    User-Agent: "ReconMaster/3.2.0-Elite"
 ```
 
 ### Environment Variables

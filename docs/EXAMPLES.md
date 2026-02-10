@@ -211,7 +211,7 @@ python3 reconmaster.py -d example.com -w n0kovo_subdomains.txt -o ~/recon/extend
 
 ---
 
-### Example 18: Elite OSINT Intelligence (v3.1.0-Pro)
+### Example 18: Elite OSINT Intelligence (v3.2.0-Elite)
 
 **Scenario**: Maximum passive discovery utilizing premium API sources.
 
@@ -229,15 +229,26 @@ export VIRUSTOTAL_API_KEY="4305df5..."
 python3 reconmaster.py -d target.com --passive-only --i-understand-this-requires-authorization
 ```
 
-**Results**:
-- **Censys**: Discovers non-indexed subdomains via SSL/TLS certificate history.
-- **SecurityTrails**: Fetches instantaneous historical DNS records.
-- **VirusTotal**: Correlates subdomains found in malware communication logs and historical hashes.
+---
+
+### Example 19: VIP SQLi Scanning
+**Scenario**: Identifying high-risk SQL injection points on a web application.
+
+```bash
+# Run elite scan with native SQLi engine
+python3 reconmaster.py -d app.target.com --i-understand-this-requires-authorization
 ```
+
+**Workflow**:
+1. Crawls target with **Katana** to find all parameters.
+2. Identifies "High Value" endpoints (login, search, profile).
+3. Injects **Elite Payloads** from the `wordlists/` directory.
+4. Analyzes responses for **Heuristic Time/Error signatures**.
+5. Generates interactive charts in the **Premium Dashboard 2.0**.
 
 ---
 
-## Bug Bounty Workflows
+## Best Practices Summary (v3.2.0-Elite)
 
 ### Example 9: Complete Bug Bounty Reconnaissance
 

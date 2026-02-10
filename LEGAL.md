@@ -205,6 +205,7 @@ The authors reserve the right to modify these terms at any time. Continued use c
 
 ---
 
-**Last Updated**: 2026-02-10
+**Last Updated**: 2026-02-10  
+**Version**: 3.2.0-Elite (Hardened Elite Release)
 
 **For questions about legal compliance**, consult with qualified legal counsel in your jurisdiction.

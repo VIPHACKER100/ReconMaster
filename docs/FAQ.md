@@ -272,26 +272,19 @@ grep -v "staging\|test\|dev" recon_results/target.com_*/subdomains/all_subdomain
 
 Or edit filtering logic in code.
 
-## Security & Data Protection (v3.1.0-Pro)
+## Security & Data Protection (v3.2.0-Elite)
 
 ### Q: Does ReconMaster expose my API keys in logs?
-**A:** No. ReconMaster v3.1.0-Pro includes a **Sensitive Data Filter** that automatically detects and redacts common API keys (Google, AWS, GitHub, etc.) and passwords before they are written to any log files.
+**A:** No. ReconMaster v3.2.0-Elite includes a **Sensitive Data Filter** that automatically redacts common API keys and passwords from all logs.
 
 ### Q: How safe is the automatic tool execution?
-**A:** Very safe. Every command is executed through a **sanitization layer** that prevents shell injection, and all file operations are protected by a **path resolution guard** to prevent path traversal vulnerabilities.
+**A:** Every command is executed through a **sanitization layer** and protected by a **path resolution guard** to prevent vulnerabilities.
 
-### Q: What happens if I get rate-limited by a target?
-**A:** The **Circuit Breaker** module will detect consistent 403 or 429 errors and automatically enter a "Cooldown" state, pausing requests for that target to protect your IP reputation and allow the target's WAF to recover.
+### Q: What is the VIP SQLi Scanner?
+**A:** It's a native, high-fidelity engine introduced in v3.2.0-Elite that performs heuristic analysis on input fields and parameters to detect potential SQL injection vulnerabilities with minimal false positives.
 
-### Q: How do I configure my Censys, SecurityTrails, or VirusTotal API keys?
-**A:** You can set them as environment variables in your terminal before running a scan:
-```powershell
-$env:CENSYS_API_ID="Xq9..."
-$env:CENSYS_API_SECRET="5oQ..."
-$env:SECURITYTRAILS_API_KEY="wf2..."
-$env:VIRUSTOTAL_API_KEY="430..."
-```
-ReconMaster will automatically detect these and inject them into compatible tools (`subfinder`, `Amass`, etc.) for significantly enhanced discovery depth.
+### Q: How do I access the Premium Dashboard 2.0?
+**A:** After a scan completes, open the `full_report.html` file located in the root of your results directory. It uses Chart.js to provide interactive visualizations of your scan data.
 
 ## Getting More Help
 

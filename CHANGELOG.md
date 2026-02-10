@@ -269,7 +269,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - **LTS Release**: v2.0.0 (support until 2027-02-01)
 - **EOL Release**: v1.0.0 (support ended 2025-10-01)
 
-For upgrade assistance, see [UPGRADING.md](docs/UPGRADING.md).
+For upgrade assistance, see the project GitHub releases.
 
 ---
 

@@ -2,13 +2,13 @@
 
 ## Overview
 
-ReconMaster is available on PyPI and can be installed globally using `pip`. This guide covers installation, configuration, and usage.
+ReconMaster v3.2.0-Elite is available on PyPI and can be installed globally using `pip`. This guide covers installation, configuration, and usage.
 
 ---
 
 ## Prerequisites
 
-- **Python:** 3.7 or higher
+- **Python:** 3.9 or higher
 - **pip:** Package installer (comes with Python)
 - **System Tools:** nmap, curl, wget (optional but recommended)
 
@@ -649,7 +649,7 @@ done < domains.txt
 
 ## Support
 
-- **Documentation:** See [PHASE_19_GUIDE.md](PHASE_19_GUIDE.md)
+- **Documentation:** See [Main Documentation](README.md)
 - **PyPI:** [reconmaster](https://pypi.org/project/reconmaster/)
 - **GitHub:** [ReconMaster](https://github.com/VIPHACKER100/ReconMaster)
 - **Issues:** [GitHub Issues](https://github.com/VIPHACKER100/ReconMaster/issues)
@@ -671,4 +671,4 @@ Start using: `pip install reconmaster`
 ---
 
 **Last Updated:** February 10, 2026  
-**Version:** 3.1.0-Pro
+**Version:** 3.2.0-Elite

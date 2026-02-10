@@ -2,7 +2,7 @@
 
 ## Overview
 
-ReconMaster can be deployed and run using Docker, providing:
+ReconMaster v3.2.0-Elite can be deployed and run using Docker, providing:
 - ✅ Isolated environment
 - ✅ All dependencies pre-installed
 - ✅ Cross-platform compatibility
@@ -20,7 +20,7 @@ ReconMaster can be deployed and run using Docker, providing:
 docker build -t reconmaster:latest .
 
 # Build with custom tag
-docker build -t reconmaster:3.1.0-Pro .
+docker build -t reconmaster:3.2.0-Elite .
 
 # Build without cache
 docker build --no-cache -t reconmaster:latest .
@@ -29,6 +29,10 @@ docker build --no-cache -t reconmaster:latest .
 docker build --build-arg PYTHON_VERSION=3.10 -t reconmaster:latest .
 ```
 
+---
+
+**Last Updated:** February 10, 2026  
+**Version:** 3.2.0-Elite
 ### Using Docker Compose
 
 ```bash
@@ -592,7 +596,7 @@ docker-compose down
 
 ## Support
 
-- **Documentation:** See [PHASE_19_GUIDE.md](PHASE_19_GUIDE.md)
+- **Documentation:** See [Main Documentation](README.md)
 - **Docker Hub:** [reconmaster:latest](https://hub.docker.com/r/VIPHACKER100/reconmaster)
 - **Issues:** [GitHub Issues](https://github.com/VIPHACKER100/ReconMaster/issues)
 
@@ -613,4 +617,4 @@ Start using Docker: `docker run reconmaster:latest --help`
 ---
 
 **Last Updated:** February 10, 2026  
-**Version:** 3.1.0-Pro
+**Version:** 3.2.0-Elite

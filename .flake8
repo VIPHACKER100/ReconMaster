@@ -1,11 +1,4 @@
-<<<<<<< HEAD
 [flake8]
 exclude = .venv,venv,__pycache__,.git
 max-line-length = 200
 ignore = E203,W503
-=======
-[flake8]
-exclude = .venv,venv,__pycache__,.git
-max-line-length = 200
-ignore = E203,W503
->>>>>>> origin/main

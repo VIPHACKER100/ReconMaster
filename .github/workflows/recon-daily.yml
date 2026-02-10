@@ -28,6 +28,7 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: '1.21'
+          cache: false
 
       - name: Install system dependencies
         run: |
@@ -94,5 +95,5 @@ jobs:
         if: always()
         with:
           name: summary-report-${{ github.run_number }}
-          path: recon_results/**/reports/RECON_SUMMARY.md
+          path: recon_results/**/executive_report.md
           retention-days: 90

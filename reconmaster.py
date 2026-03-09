@@ -235,20 +235,20 @@ class ReconMaster:
         self.screenshot_semaphore = asyncio.Semaphore(3)  # Limit parallel screenshots
         self.circuit_breaker = CircuitBreaker(threshold=self.CIRCUIT_BREAKER_THRESHOLD, timeout=self.CIRCUIT_BREAKER_COOLDOWN)
 
-    def _ensure_dir(self, file_path: str):
-        """Ensure the parent directory for a given file path exists"""
-        directory = os.path.dirname(file_path)
-        if directory:
-            os.makedirs(directory, exist_ok=True)
-
         # Persistence & Regression
-        self.state_file = os.path.join(output_dir, f"{self.target}_state.json")
+        self.state_file = os.path.join(self.output_dir, f"{self.target}_state.json")
         self.new_findings = {"subdomains": [], "vulns": [], "ports": []}
 
         # Create directory structure
         self._setup_dirs()
         self._load_state()
         self.load_config()
+
+    def _ensure_dir(self, file_path: str):
+        """Ensure the parent directory for a given file path exists"""
+        directory = os.path.dirname(file_path)
+        if directory:
+            os.makedirs(directory, exist_ok=True)
 
     def load_config(self, config_file: Optional[str] = None):
         """Load configuration from YAML file and apply to current instance"""
@@ -805,7 +805,7 @@ class ReconMaster:
 
         print(f"{Colors.GREEN}[+] Found {len(self.live_domains)} live web hosts.{Colors.ENDC}")
 
-    async def scan_vulnerabilities(self):
+    async def scan_vulnerabilities(self, severity: Optional[str] = None):
         """Run nuclei for vulnerability detection with tech-profiling"""
         if not self.live_domains:
             return
@@ -841,8 +841,8 @@ class ReconMaster:
             "-l", self.files["alive"],
             "-json",
             "-o", self.files["nuclei_results"],
-            "-as", "-silent", # Added -as for sarif export later
-            "-severity", "low,medium,high,critical",
+            "-as", "-silent", 
+            "-severity", severity if severity else "low,medium,high,critical",
             "-tags", ",".join(selected_tags),
             "-rl", "50",
             "-c", "20"
@@ -850,7 +850,7 @@ class ReconMaster:
         await self._run_command(cmd, timeout=1200)
 
         # Export SARIF
-        await self._run_command(["nuclei", "-l", self.files["alive"], "-tags", ",".join(selected_tags), "-severity", "low,medium,high,critical", "-sarif", "-o", self.files["nuclei_sarif"], "-silent"])
+        await self._run_command(["nuclei", "-l", self.files["alive"], "-tags", ",".join(selected_tags), "-severity", severity if severity else "low,medium,high,critical", "-sarif", "-o", self.files["nuclei_sarif"], "-silent"])
 
         if os.path.exists(self.files["nuclei_results"]):
             severities = {"critical": [], "high": [], "medium": [], "low": [], "info": []}
@@ -2031,7 +2031,7 @@ async def run_recon(recon, args):
     if not args.passive_only and not recon.daily:
         # Full scan phase (can run some tasks concurrently)
         await asyncio.gather(
-            recon.scan_vulnerabilities(),
+            recon.scan_vulnerabilities(severity=getattr(args, 'nuclei_severity', None)),
             recon.take_screenshots(),
             recon.crawl_and_extract(),
             recon.subjs_discovery(),
@@ -2050,7 +2050,7 @@ async def run_recon(recon, args):
     elif recon.daily:
         # Specialized light-weight automation mode
         await asyncio.gather(
-            recon.scan_vulnerabilities(),
+            recon.scan_vulnerabilities(severity=getattr(args, 'nuclei_severity', None)),
             recon.fuzz_api_endpoints(),
             recon.check_takeovers()
         )
@@ -2094,6 +2094,9 @@ def main():
     parser.add_argument("--exclude", help="Comma-separated list of domains/patterns to exclude")
     parser.add_argument("--resume", action="store_true", help="Resume from existing artifacts")
     parser.add_argument("--daily", action="store_true", help="Enable daily automation mode (light recon + diff)")
+    parser.add_argument("--verbose", action="store_true", help="Enable verbose debug logging")
+    parser.add_argument("--scan-id", help="Deterministic scan identifier for output directory")
+    parser.add_argument("--nuclei-severity", help="Minimum Nuclei severity level (low, medium, high, critical)")
     parser.add_argument("--i-understand-this-requires-authorization", action="store_true", dest="authorized", help="Confirm you have permission to scan the target")
 
     args = parser.parse_args()
@@ -2142,6 +2145,12 @@ def main():
 
     # ===== END INPUT VALIDATION =====
 
+    if args.verbose:
+        logger.setLevel(logging.DEBUG)
+        for handler in logger.handlers:
+            handler.setLevel(logging.DEBUG)
+        logger.debug("Verbose logging enabled.")
+
     if not args.authorized:
         print(f"{Colors.RED}[!] Error: You must confirm authorization to scan the target.{Colors.ENDC}")
         print(f"{Colors.YELLOW}[*] Use the flag: --i-understand-this-requires-authorization{Colors.ENDC}")
@@ -2154,6 +2163,11 @@ def main():
             threads=args.threads,
             wordlist=args.wordlist
         )
+
+        # Apply scan-id if provided to make output directory deterministic
+        if args.scan_id:
+            recon.output_dir = os.path.join(args.output, f"{recon.target}_{args.scan_id}")
+            recon._setup_dirs() # Re-initialize with new path
 
         recon.verify_tools()
 

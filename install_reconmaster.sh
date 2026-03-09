@@ -78,6 +78,9 @@ GO_TOOLS=(
     "github.com/owasp-amass/amass/v4/..."
     "github.com/lc/subjs"
     "github.com/PentestPad/subzy"
+    "github.com/tomnomnom/waybackurls"
+    "github.com/tomnomnom/gf"
+    "github.com/lc/gau/v2/cmd/gau"
 )
 
 for tool in "${GO_TOOLS[@]}"; do

@@ -2,7 +2,7 @@
 """
 ReconMaster Monitoring Scheduler
 Automated reconnaissance scheduling and execution
-Version: 4.0.0-Titan
+__version__ = "4.1.0-Elite"
 Author: VIPHACKER100
 """
 

@@ -11,7 +11,7 @@ $tools = @(
     @{ name = "nuclei"; url = "https://github.com/projectdiscovery/nuclei/releases/download/v3.3.8/nuclei_3.3.8_windows_amd64.zip" },
     @{ name = "dnsx"; url = "https://github.com/projectdiscovery/dnsx/releases/download/v1.2.3/dnsx_1.2.3_windows_amd64.zip" },
     @{ name = "ffuf"; url = "https://github.com/ffuf/ffuf/releases/download/v2.1.0/ffuf_2.1.0_windows_amd64.zip" },
-    @{ name = "katana"; url = "https://github.com/projectdiscovery/katana/releases/download/v1.1.0/katana_1.1.0_windows_amd64.zip" },
+    @{ name = "katana"; url = "https://github.com/projectdiscovery/katana/releases/download/v1.1.1/katana_1.1.1_windows_amd64.zip" },
     @{ name = "gowitness"; url = "https://github.com/sensepost/gowitness/releases/download/2.5.1/gowitness_2.5.1_windows_amd64.zip" },
     @{ name = "amass"; url = "https://github.com/owasp-amass/amass/releases/download/v4.2.0/amass_windows_amd64.zip" },
     @{ name = "assetfinder"; url = "https://github.com/tomnomnom/assetfinder/releases/download/v0.1.1/assetfinder-windows-amd64-0.1.1.zip" },
@@ -21,7 +21,7 @@ $tools = @(
 Write-Host "`n╦═╗╔═╗╔═╗╔═╗╔╗╔╔╦╗╔═╗╔═╗╔╦╗╔═╗╦═╗" -ForegroundColor Cyan
 Write-Host "╠╦╝║╣ ║  ║ ║║║║║║║╠═╣╚═╗ ║ ║╣ ╠╦╝"
 Write-Host "╩╚═╚═╝╚═╝╚═╝╝╚╝╩ ╩╩ ╩╚═╝ ╩ ╚═╝╩╚═" -ForegroundColor Cyan
-Write-Host " Professional Windows Installer for v4.0.0-Titan`n" -ForegroundColor Yellow
+Write-Host " Professional Windows Installer for v4.1.0-Elite`n" -ForegroundColor Yellow
 
 foreach ($tool in $tools) {
     $destFile = Join-Path $toolsDir "$($tool.name).exe"

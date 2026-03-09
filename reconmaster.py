@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
 """
-ReconMaster v4.0.0-Titan - Advanced Asynchronous Reconnaissance Framework
-Author: VIPHACKER100 ( Aryan Ahirwar )
+ReconMaster v4.1.0-Elite - Platinum Asynchronous Reconnaissance Framework
+Author: viphacker100 ( Aryan Ahirwar )
 License: MIT
 """
 
-__version__ = "4.0.0-Titan"
-VERSION = "4.0.0"
-PRO_VERSION = "4.0.0-Titan"
-AUTHOR = "VIPHACKER100 ( Aryan Ahirwar )"
+__version__ = "4.1.0-Elite"
+VERSION = "4.1.0"
+PRO_VERSION = "4.1.0-Elite"
+AUTHOR = "viphacker100 ( Aryan Ahirwar )"
 GITHUB = "https://github.com/VIPHACKER100/ReconMaster"
 
 import os
@@ -1475,6 +1475,13 @@ class ReconMaster:
                 score += severity_counts["medium"] * 5
                 score += severity_counts["low"] * 1
         
+        # Technology surface weighting (Titan Feature)
+        tech_count = sum(len(t) for t in self.tech_stack.values())
+        if tech_count > 50:
+            score += 15
+        elif tech_count > 20:
+            score += 5
+            
         return min(max(score, 0), 100)
 
     def _generate_ai_profile(self, vuln: dict) -> str:

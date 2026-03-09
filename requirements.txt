@@ -1,4 +1,4 @@
-# ReconMaster v4.0.0-Titan Requirements
+# ReconMaster v4.1.0-Elite Requirements
 # Updated March 2026 - Python 3.9+ with Python 3.12+ support
 
 # Core Dependencies - Latest Stable

@@ -1,4 +1,4 @@
-name: ReconMaster Elite Advanced Daily Recon
+name: ReconMaster v4.0.0-Titan Advanced Recon
 
 on:
   workflow_dispatch:
@@ -71,12 +71,12 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: "3.12"
 
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.21'
+          go-version: '1.22.0'
           cache: false
 
       - name: Install system dependencies
@@ -152,7 +152,7 @@ jobs:
         run: |
           SUMMARY_FILE=$(find recon_results -name "executive_report.md" -type f | head -n 1)
           if [ -f "$SUMMARY_FILE" ]; then
-            echo "## Recon Elite Summary for ${{ matrix.domain }}" >> $GITHUB_STEP_SUMMARY
+            echo "## ReconMaster v4.0.0-Titan Summary for ${{ matrix.domain }}" >> $GITHUB_STEP_SUMMARY
             cat "$SUMMARY_FILE" >> $GITHUB_STEP_SUMMARY
           fi
 

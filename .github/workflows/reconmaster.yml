@@ -1,4 +1,4 @@
-name: ReconMaster Elite Security Scan
+name: ReconMaster v4.0.0-Titan Security Scan
 
 on:
   workflow_dispatch:
@@ -57,7 +57,7 @@ on:
         required: false
 
 env:
-  PYTHON_VERSION: "3.11"
+  PYTHON_VERSION: "3.12"
   GO_VERSION: "1.22.0"
   SCAN_TIMEOUT: 180
   MAX_RETRIES: 3

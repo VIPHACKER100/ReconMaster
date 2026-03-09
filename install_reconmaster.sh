@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# ReconMaster v3.1-Pro Installation Script
-# Automated setup for professional reconnaissance infrastructure
+# ReconMaster v4.0.0-Titan Installation Script
+# Automated setup for professional reconnaissance infrastructure (Titan Edition)
 
 # Color codes for output
 GREEN='\033[0;32m'
@@ -22,7 +22,7 @@ echo -e "${CYAN}${BOLD}"
 echo "╦═╗╔═╗╔═╗╔═╗╔╗╔╔╦╗╔═╗╔═╗╔╦╗╔═╗╦═╗"
 echo "╠╦╝║╣ ║  ║ ║║║║║║║╠═╣╚═╗ ║ ║╣ ╠╦╝"
 echo "╩╚═╚═╝╚═╝╚═╝╝╚╝╩ ╩╩ ╩╚═╝ ╩ ╚═╝╩╚═"
-echo -e "${NC}${YELLOW} Professional Installer for v3.1.0-Pro${NC}\n"
+echo -e "${NC}${YELLOW} Professional Installer for v4.0.0-Titan${NC}\n"
 
 if [ "$EUID" -ne 0 ]; then
     print_error "This installer requires root privileges for system dependencies. Please run with sudo."
@@ -122,7 +122,7 @@ if [ ! -f "wordlists/dns_common.txt" ]; then
 fi
 
 echo -e "\n${GREEN}======================================================="
-echo "      ReconMaster v3.1-Pro Setup Completed!"
+echo "      ReconMaster v4.0.0-Titan Setup Completed!"
 echo "======================================================="
 echo -e "${NC}"
 echo -e "You can now run: ${BOLD}reconmaster -d example.com${NC}"

@@ -2,7 +2,7 @@
 
 ## 🚀 Elite Commands
 
-### ⚡ High-Speed Scanning (v3.2.0-Elite)
+### ⚡ High-Speed Scanning (v4.0.0-Titan)
 The asynchronous engine is now hardened with JIT directory resilience and the VIP SQLi scanner.
 
 ```powershell

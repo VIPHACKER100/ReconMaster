@@ -272,16 +272,16 @@ grep -v "staging\|test\|dev" recon_results/target.com_*/subdomains/all_subdomain
 
 Or edit filtering logic in code.
 
-## Security & Data Protection (v3.2.0-Elite)
+## Security & Data Protection (v4.0.0-Titan)
 
 ### Q: Does ReconMaster expose my API keys in logs?
-**A:** No. ReconMaster v3.2.0-Elite includes a **Sensitive Data Filter** that automatically redacts common API keys and passwords from all logs.
+**A:** No. ReconMaster v4.0.0-Titan includes a **Sensitive Data Filter** that automatically redacts common API keys and passwords from all logs.
 
 ### Q: How safe is the automatic tool execution?
 **A:** Every command is executed through a **sanitization layer** and protected by a **path resolution guard** to prevent vulnerabilities.
 
 ### Q: What is the VIP SQLi Scanner?
-**A:** It's a native, high-fidelity engine introduced in v3.2.0-Elite that performs heuristic analysis on input fields and parameters to detect potential SQL injection vulnerabilities with minimal false positives.
+**A:** It's a native, high-fidelity engine introduced in v4.0.0-Titan that performs heuristic analysis on input fields and parameters to detect potential SQL injection vulnerabilities with minimal false positives.
 
 ### Q: How do I access the Premium Dashboard 2.0?
 **A:** After a scan completes, open the `full_report.html` file located in the root of your results directory. It uses Chart.js to provide interactive visualizations of your scan data.

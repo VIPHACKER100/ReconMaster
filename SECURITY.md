@@ -9,7 +9,7 @@
 The author assumes **no liability** for any misuse, damage, or illegal activities performed with this tool.
 
 ## Internal Security Features
-ReconMaster v3.2.0-Elite implements several internal security controls:
+ReconMaster v4.0.0-Titan implements several internal security controls:
 - **Sensitive Data Redaction**: Log filters automatically redact API keys (**Censys, SecurityTrails, VirusTotal**, Google, AWS, GitHub, etc.) and passwords.
 - **Circuit Breaker v2**: Protects against WAF blocking and rate limiting by auto-throttling requests.
 - **Path Traversal Protection**: All file writes are sandboxed using strict path verification.

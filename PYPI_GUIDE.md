@@ -2,7 +2,7 @@
 
 ## Overview
 
-ReconMaster v3.2.0-Elite is available on PyPI and can be installed globally using `pip`. This guide covers installation, configuration, and usage.
+ReconMaster v4.0.0-Titan is available on PyPI and can be installed globally using `pip`. This guide covers installation, configuration, and usage.
 
 ---
 
@@ -37,7 +37,7 @@ pip --version
 pip install reconmaster
 
 # Install specific version
-pip install reconmaster==3.1.0-Pro
+pip install reconmaster==4.0.0-Titan
 
 # Install with extras
 pip install reconmaster[dev]     # Development tools
@@ -95,7 +95,7 @@ pip show reconmaster
 
 # Output should show:
 # Name: reconmaster
-# Version: 3.1.0-Pro
+# Version: 4.0.0-Titan
 # Location: /path/to/site-packages
 ```
 
@@ -671,4 +671,4 @@ Start using: `pip install reconmaster`
 ---
 
 **Last Updated:** February 10, 2026  
-**Version:** 3.2.0-Elite
+**Version:** 4.0.0-Titan

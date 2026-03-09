@@ -2,7 +2,7 @@
 
 ## Overview
 
-ReconMaster v3.2.0-Elite can be deployed and run using Docker, providing:
+ReconMaster v4.0.0-Titan can be deployed and run using Docker, providing:
 - ✅ Isolated environment
 - ✅ All dependencies pre-installed
 - ✅ Cross-platform compatibility
@@ -20,7 +20,7 @@ ReconMaster v3.2.0-Elite can be deployed and run using Docker, providing:
 docker build -t reconmaster:latest .
 
 # Build with custom tag
-docker build -t reconmaster:3.2.0-Elite .
+docker build -t reconmaster:4.0.0-Titan .
 
 # Build without cache
 docker build --no-cache -t reconmaster:latest .
@@ -31,8 +31,8 @@ docker build --build-arg PYTHON_VERSION=3.10 -t reconmaster:latest .
 
 ---
 
-**Last Updated:** February 10, 2026  
-**Version:** 3.2.0-Elite
+**Last Updated:** March 09, 2026  
+**Version:** 4.0.0-Titan
 ### Using Docker Compose
 
 ```bash
@@ -617,4 +617,4 @@ Start using Docker: `docker run reconmaster:latest --help`
 ---
 
 **Last Updated:** February 10, 2026  
-**Version:** 3.2.0-Elite
+**Version:** 4.0.0-Titan

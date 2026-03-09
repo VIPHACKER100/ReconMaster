@@ -1,6 +1,6 @@
-# ReconMaster v3.2.0-Elite Documentation Index
+# ReconMaster v4.0.0-Titan Documentation Index
 
-**Framework Version:** 3.2.0-Elite 💎  
+**Framework Version:** 4.0.0-Titan  
 **Architecture:** Asynchronous Core ⚡  
 **Last Updated:** February 10, 2026
 
@@ -39,7 +39,7 @@
 
 ## 🚀 Version Comparison
 
-| Feature | v3.1.0-Pro | v3.2.0-Elite (Latest) |
+| Feature | v3.2.0-Elite | v4.0.0-Titan (Latest) |
 |---------|------------|-----------------------|
 | SQLi Scan | Nuclei Templates | **Native VIP SQLi Engine** |
 | Cloud Scan | Manual | **Automated Multi-Cloud Discovery** |
@@ -49,6 +49,6 @@
 ---
 
 **Last Updated:** February 10, 2026  
-**Framework Version:** 3.2.0-Elite  
+**Framework Version:** 4.0.0-Titan  
 **Maintained by:** VIPHACKER100 ( Aryan Ahirwar )  
 **GitHub Repository:** [VIPHACKER100/ReconMaster](https://github.com/VIPHACKER100/ReconMaster)

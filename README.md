@@ -593,7 +593,7 @@ advanced:
     https: ""
   
   custom_headers:
-    User-Agent: "ReconMaster/3.2.0-Elite"
+    User-Agent: "ReconMaster/4.0.0-Titan"
 ```
 
 ### Environment Variables

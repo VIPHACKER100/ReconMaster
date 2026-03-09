@@ -535,7 +535,7 @@ sudo apt install openvpn
 openvpn --config config.ovpn
 ```
 
-### Issue: "CIRCUIT BREAKER OPEN" in logs (v3.2.0-Elite)
+### Issue: "CIRCUIT BREAKER OPEN" in logs (v4.0.0-Titan)
 **Symptoms**:
 - Scan stops or skips many targets
 - Log shows `🚫 CIRCUIT BREAKER OPENED`

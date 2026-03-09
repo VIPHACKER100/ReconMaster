@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-ReconMaster v3.1.0-Pro - Advanced Asynchronous Reconnaissance Framework
+ReconMaster v4.0.0-Titan - Advanced Asynchronous Reconnaissance Framework
 Author: VIPHACKER100 ( Aryan Ahirwar )
 License: MIT
 """
@@ -1655,6 +1655,7 @@ class ReconMaster:
             <a href="#overview" class="active">Overview</a>
             <a href="#vulnerabilities">Findings</a>
             <a href="#assets">Assets</a>
+            <a href="#api-security">API & GraphQL</a>
             <a href="#technologies">Tech Stack</a>
             <a href="#ai-insights">AI Intelligence</a>
         </nav>

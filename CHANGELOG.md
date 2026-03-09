@@ -6,6 +6,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [4.0.0-Titan] - 2026-03-09
 ### Added
+
 - **Titan Dashboard 2.0**: Functional real-time monitoring dashboard with live data integration.
 - **GraphQL Discovery**: Native plugin for detecting and introspecting GraphQL endpoints.
 - **SIEM Export**: New module to export results directly to Elastic/Splunk (JSON).
@@ -13,17 +14,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - **Enhanced Cloud Probing**: Expanded support for multi-cloud asset discovery.
 
 ### Changed
+
 - **Version Synchronization**: Unified versioning across codebase (v4.0.0-Titan).
 - **Core Optimization**: Improved asynchronous orchestrator for better plugin handling.
 
 ## [3.2.0-Elite] - 2026-02-10
 ### Added
+
 - **VIP SQLi Scanner**: Integrated a high-fidelity native SQL injection detection engine with heuristic analysis and Nuclei integration.
 - **Multi-Cloud Discovery**: New plugin for proactive AWS S3, Azure Blob, and GCP Storage asset probing.
 - **Premium Dashboard 2.0**: Interactive graphs using Chart.js for severity distribution and technology adoption.
 - **JIT Directory Resilience**: Improved engine stability with just-in-time directory creation for all write operations.
 
 ### Fixed
+
 - GitHub Actions workflow syntax for secret-dependent jobs and steps.
 - Subdomain Takeover and Broken Link detection logic refinement.
 

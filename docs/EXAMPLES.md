@@ -211,7 +211,7 @@ python3 reconmaster.py -d example.com -w n0kovo_subdomains.txt -o ~/recon/extend
 
 ---
 
-### Example 18: Elite OSINT Intelligence (v3.2.0-Elite)
+### Example 18: Titan Intelligence Gathering (v4.0.0-Titan)
 
 **Scenario**: Maximum passive discovery utilizing premium API sources.
 
@@ -248,7 +248,7 @@ python3 reconmaster.py -d app.target.com --i-understand-this-requires-authorizat
 
 ---
 
-## Best Practices Summary (v3.2.0-Elite)
+## Best Practices Summary (v4.0.0-Titan)
 
 ### Example 9: Complete Bug Bounty Reconnaissance
 
@@ -577,7 +577,7 @@ comm -23 \
 
 ---
 
-### Example 17: CI/CD Advanced Security Scan (v3.1.0-Pro)
+### Example 17: CI/CD Titan Security Scan (v4.0.0-Titan)
 
 **Scenario**: Automated, matrix-based security assessment via GitHub Actions.
 

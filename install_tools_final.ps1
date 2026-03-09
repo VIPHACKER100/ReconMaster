@@ -1,5 +1,5 @@
-# ReconMaster v3.1-Pro Windows Installer
-# Professional setup for Windows-based reconnaissance
+# ReconMaster v4.0.0-Titan Windows Installer
+# Professional setup for Windows-based reconnaissance (Titan Edition)
 
 $currentDir = Get-Location
 $toolsDir = Join-Path $currentDir "bin"
@@ -21,7 +21,7 @@ $tools = @(
 Write-Host "`n╦═╗╔═╗╔═╗╔═╗╔╗╔╔╦╗╔═╗╔═╗╔╦╗╔═╗╦═╗" -ForegroundColor Cyan
 Write-Host "╠╦╝║╣ ║  ║ ║║║║║║║╠═╣╚═╗ ║ ║╣ ╠╦╝"
 Write-Host "╩╚═╚═╝╚═╝╚═╝╝╚╝╩ ╩╩ ╩╚═╝ ╩ ╚═╝╩╚═" -ForegroundColor Cyan
-Write-Host " Professional Windows Installer for v3.1.0-Pro`n" -ForegroundColor Yellow
+Write-Host " Professional Windows Installer for v4.0.0-Titan`n" -ForegroundColor Yellow
 
 foreach ($tool in $tools) {
     $destFile = Join-Path $toolsDir "$($tool.name).exe"

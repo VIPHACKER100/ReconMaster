@@ -448,5 +448,5 @@ Thank you for contributing to ReconMaster! Your efforts help make this tool bett
 
 **Questions?** Open an issue or reach out to the community!
 
-**Last Updated:** February 10, 2026  
-**Version:** 3.2.0-Elite
+**Last Updated:** March 09, 2026  
+**Version:** 4.0.0-Titan

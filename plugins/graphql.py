@@ -10,11 +10,10 @@ try:
 except ImportError:
     _HAVE_AIOHTTP = False
 
-logger = logging.getLogger("ReconMaster.Plugins.GraphQL")
-
 class GraphQLDiscoveryPlugin(ReconPlugin):
     name = "GraphQL Discovery"
     description = "Detects GraphQL endpoints and attempts introspection"
+    version = "1.0.0"
 
     # Common GraphQL paths
     GRAPHQL_PATHS = [
@@ -24,7 +23,7 @@ class GraphQLDiscoveryPlugin(ReconPlugin):
     ]
 
     async def run(self, recon):
-        logger.info("Starting GraphQL discovery module...")
+        self._log("Starting GraphQL discovery module...")
         
         # 1. Gather all potential targets (subdomains + crawled URLs)
         targets = set()
@@ -38,13 +37,13 @@ class GraphQLDiscoveryPlugin(ReconPlugin):
             if len(parts) >= 3:
                 targets.add("/".join(parts[:3]))
 
-        logger.info(f"Probing {len(targets)} targets for GraphQL interfaces...")
+        self._log(f"Probing {len(targets)} targets for GraphQL interfaces...")
 
         # 2. Run high-speed path probing
         if _HAVE_AIOHTTP:
             await self._probe_graphql_endpoints(recon, targets)
         else:
-            logger.warning("aiohttp not found. Skipping GraphQL probing.")
+            self._log("aiohttp not found. Skipping GraphQL probing.", logging.WARNING)
 
     async def _probe_graphql_endpoints(self, recon, targets):
         connector = aiohttp.TCPConnector(ssl=False, limit=recon.threads, limit_per_host=30)
@@ -67,7 +66,7 @@ class GraphQLDiscoveryPlugin(ReconPlugin):
                 if resp.status == 200:
                     data = await resp.json()
                     if "data" in data and "__typename" in data["data"]:
-                        logger.warning(f"[!] GraphQL Endpoint Found: {url}")
+                        self._log(f"[!] GraphQL Endpoint Found: {url}", logging.WARNING)
                         
                         # Attempt introspection
                         introspection_query = {"query": "{__schema{queryType{name}}}"}
@@ -78,14 +77,7 @@ class GraphQLDiscoveryPlugin(ReconPlugin):
                             severity = "medium" if is_introspectable else "info"
                             msg = "GraphQL Endpoint Discovered (Introspection Enabled)" if is_introspectable else "GraphQL Endpoint Discovered"
                             
-                            recon.vulns.append({
-                                "info": {
-                                    "name": msg,
-                                    "severity": severity,
-                                    "description": f"Found at {url}. Introspection: {'YES' if is_introspectable else 'NO'}"
-                                },
-                                "matched-at": url
-                            })
+                            self._add_finding(recon, msg, severity, url, description=f"Found at {url}. Introspection: {'YES' if is_introspectable else 'NO'}")
                             
                             # Log to findings file
                             gql_file = os.path.join(recon.output_dir, "vulns", "graphql_endpoints.txt")

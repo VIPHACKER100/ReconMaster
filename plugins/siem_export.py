@@ -4,14 +4,13 @@ import json
 import logging
 from datetime import datetime
 
-logger = logging.getLogger("ReconMaster.Plugins.SIEM")
-
 class SIEMExportPlugin(ReconPlugin):
     name = "SIEM Export"
     description = "Exports scan results to SIEM-ready JSON format (Elastic/Splunk)"
+    version = "1.0.0"
 
     async def run(self, recon):
-        logger.info("Generating SIEM-ready export data...")
+        self._log("Generating SIEM-ready export data...")
         
         siem_dir = os.path.join(recon.output_dir, "exports", "siem")
         os.makedirs(siem_dir, exist_ok=True)
@@ -50,4 +49,4 @@ class SIEMExportPlugin(ReconPlugin):
             for event in events:
                 f.write(json.dumps(event) + "\n")
         
-        logger.info(f"SIEM export completed: {siem_file}")
+        self._log(f"SIEM export completed: {siem_file}")

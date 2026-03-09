@@ -11,11 +11,10 @@ try:
 except ImportError:
     _HAVE_AIOHTTP = False
 
-logger = logging.getLogger("ReconMaster.Plugins.SQLi")
-
 class SQLiPlugin(ReconPlugin):
     name = "VIP SQLi Scanner"
     description = "Advanced SQL injection detection engine using heuristics and nuclei"
+    version = "1.0.0"
 
     # Common SQLi error patterns for various databases
     ERROR_PATTERNS = [
@@ -37,15 +36,15 @@ class SQLiPlugin(ReconPlugin):
     ]
 
     async def run(self, recon):
-        logger.info("Starting VIP SQLi Engine analysis...")
+        self._log("Starting VIP SQLi Engine analysis...")
         
         # 1. Identify dynamic URLs
         dynamic_urls = self._get_dynamic_urls(recon.urls)
         if not dynamic_urls:
-            logger.info("No dynamic URLs found for SQLi testing.")
+            self._log("No dynamic URLs found for SQLi testing.")
             return
 
-        logger.info(f"Detected {len(dynamic_urls)} dynamic targets. Running diagnostics...")
+        self._log(f"Detected {len(dynamic_urls)} dynamic targets. Running diagnostics...")
 
         # 2. Run Nuclei with SQLi tags specifically on these targets
         temp_file = os.path.join(recon.output_dir, "vulns", "sqli_targets.txt")
@@ -106,7 +105,7 @@ class SQLiPlugin(ReconPlugin):
             found_vulns = [r for r in results if r]
             
             if found_vulns:
-                logger.warning(f"VIP Engine found {len(found_vulns)} potential SQLi vulnerabilities via heuristics!")
+                self._log(f"VIP Engine found {len(found_vulns)} potential SQLi vulnerabilities via heuristics!", logging.WARNING)
                 # Write to specialized file
                 sqli_file = os.path.join(recon.output_dir, "vulns", "sqli_findings_native.txt")
                 with open(sqli_file, "a") as f:
@@ -133,10 +132,7 @@ class SQLiPlugin(ReconPlugin):
                             "pattern": pattern,
                             "severity": "high"
                         }
-                        recon.vulns.append({
-                            "info": {"name": "SQL Injection (Heuristic)", "severity": "high", "description": f"Error pattern matched: {pattern}"},
-                            "matched-at": url
-                        })
+                        self._add_finding(recon, "SQL Injection (Heuristic)", "high", url, description=f"Error pattern matched: {pattern}")
                         return vuln
         except Exception:
             pass
@@ -153,4 +149,4 @@ class SQLiPlugin(ReconPlugin):
                     except:
                         continue
         except Exception as e:
-            logger.error(f"Error parsing SQLi results: {e}")
+            self._log(f"Error parsing SQLi results: {e}", logging.ERROR)

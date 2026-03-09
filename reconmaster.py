@@ -1449,28 +1449,51 @@ class ReconMaster:
         print(f"{Colors.GREEN}[+] Port scan complete.{Colors.ENDC}")
 
     def _calculate_risk_score(self) -> int:
-        """Calculate a weighted risk score (0-100)"""
+        """Calculate a weighted risk score (0-100) using priority scores if available"""
         score = 0
 
+        # High level indicators
         if self.takeovers:
-            score += 50  # High impact
+            score += 50
 
-        # Weighted severity system
-        severity_counts = {"critical": 0, "high": 0, "medium": 0, "low": 0}
-        for v in self.vulns:
-            sev = v.get('info', {}).get('severity', 'info').lower()
-            if sev in severity_counts:
-                severity_counts[sev] += 1
+        # Use priority scores from threat intel if available
+        if self.vulns:
+            priority_scores = [v.get('info', {}).get('priority_score', 0) for v in self.vulns]
+            if any(priority_scores):
+                # Use top 3 priority scores as baseline
+                top_scores = sorted(priority_scores, reverse=True)[:3]
+                score += sum(top_scores) // 2
+            else:
+                # Fallback to legacy severity counts
+                severity_counts = {"critical": 0, "high": 0, "medium": 0, "low": 0}
+                for v in self.vulns:
+                    sev = v.get('info', {}).get('severity', 'info').lower()
+                    if sev in severity_counts:
+                        severity_counts[sev] += 1
+                score += severity_counts["critical"] * 30
+                score += severity_counts["high"] * 15
+                score += severity_counts["medium"] * 5
+                score += severity_counts["low"] * 1
+        
+        return min(max(score, 0), 100)
 
-        score += severity_counts["critical"] * 30
-        score += severity_counts["high"] * 15
-        score += severity_counts["medium"] * 5
-        score += severity_counts["low"] * 1
-
-        if severity_counts["medium"] or severity_counts["high"] or severity_counts["critical"]:
-            score += 10  # Base penalty for significant findings
-
-        return min(score, 100)
+    def _generate_ai_profile(self, vuln: dict) -> str:
+        """Generate a concise AI-driven threat profile for a finding"""
+        info = vuln.get('info', {}) or {}
+        name = info.get('name', 'Unknown')
+        severity = info.get('severity', 'info')
+        plugin = vuln.get('plugin', 'Core')
+        
+        profiles = {
+            "critical": "This finding represents an immediate risk of system compromise. Automated analysis suggests a high likelihood of exploitability in its current state.",
+            "high": "A severe security bypass or data exposure has been identified. Immediate remediation is recommended to prevent unauthorized access.",
+            "medium": "A potential security weakness has been identified. While not directly exploitable for code execution, it provides significant leverage for an attacker.",
+            "low": "This finding indicates a deviation from security best practices. While low risk individually, it can be chained with other findings.",
+            "info": "Security discovery providing additional context on the attack surface. Not directly exploitable."
+        }
+        
+        base_profile = profiles.get(severity.lower(), profiles["info"])
+        return f"[{plugin}] {base_profile}"
 
     def _generate_premium_html_report(self, duration, end_dt):
         """Generate high-fidelity premium HTML report with interactive visualizations"""
@@ -1706,11 +1729,22 @@ class ReconMaster:
             <div id="vuln-list">
                 {"".join([f'''
                 <div class="finding-item">
-                    <div>
-                        <span class="severity-pill bg-{v.get('info', {{}}).get('severity', 'info').lower() if v.get('info') else 'info'}">{v.get('info', {{}}).get('severity', 'info') if v.get('info') else 'INFO'}</span>
-                        <strong style="margin-left: 10px;">{v.get('info', {{}}).get('name', 'Discovery') if v.get('info') else 'Discovery'}</strong>
-                        <div style="color: var(--text-dim); margin-top: 8px; font-size: 0.9rem;">
-                            <code style="background: rgba(0,0,0,0.3); padding: 2px 5px; border-radius: 4px;">{v.get('matched-at', 'N/A')}</code>
+                    <div style="width: 100%;">
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                            <div>
+                                <span class="severity-pill bg-{v.get('info', {{}}).get('severity', 'info').lower() if v.get('info') else 'info'}">{v.get('info', {{}}).get('severity', 'info') if v.get('info') else 'INFO'}</span>
+                                <strong style="margin-left: 10px; font-size: 1.1rem;">{v.get('info', {{}}).get('name', 'Discovery') if v.get('info') else 'Discovery'}</strong>
+                                <span style="margin-left: 10px; opacity: 0.5; font-size: 0.8rem;">[via {v.get('plugin', 'Core')}]</span>
+                            </div>
+                            <div style="font-family: 'JetBrains Mono', monospace; color: var(--accent); font-weight: 700;">
+                                {f"Score: {{v.get('info', {{}}).get('priority_score', 'N/A')}}" if v.get('info', {{}}).get('priority_score') else ""}
+                            </div>
+                        </div>
+                        <div style="color: var(--text-dim); margin-top: 10px; font-size: 0.95rem;">
+                            <code style="background: rgba(0,0,0,0.3); padding: 4px 8px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.1); display: inline-block; width: 100%; word-break: break-all;">{v.get('matched-at', 'N/A')}</code>
+                        </div>
+                        <div style="margin-top: 12px; font-size: 0.85rem; line-height: 1.5; color: #cbd5e1; padding: 12px; background: rgba(0,0,0,0.2); border-radius: 8px;">
+                            <strong>Remediation:</strong> {v.get('info', {{}}).get('description', 'Review and apply security patches.')}
                         </div>
                     </div>
                 </div>
@@ -1844,6 +1878,10 @@ class ReconMaster:
             return
 
         import importlib.util
+        from plugins.base import ReconPlugin
+
+        self.plugin_summary = []
+
         for file in os.listdir(plugins_dir):
             if file.endswith(".py") and file not in ["__init__.py", "base.py"]:
                 try:
@@ -1853,12 +1891,20 @@ class ReconMaster:
 
                     for obj_name in dir(module):
                         obj = getattr(module, obj_name)
-                        if isinstance(obj, type) and obj.__name__ != "ReconPlugin" and "ReconPlugin" in [base.__name__ for base in obj.__bases__]:
+                        if isinstance(obj, type) and issubclass(obj, ReconPlugin) and obj is not ReconPlugin:
                             plugin_instance = obj()
+                            self.plugin_summary.append({
+                                "name": plugin_instance.name,
+                                "version": getattr(plugin_instance, 'version', '1.0.0'),
+                                "status": "Executing"
+                            })
                             logger.info(f"Executing plugin: {plugin_instance.name}")
                             await plugin_instance.run(self)
+                            self.plugin_summary[-1]["status"] = "Success"
                 except Exception as e:
                     logger.error(f"Failed to load plugin {file}: {e}")
+                    if self.plugin_summary:
+                        self.plugin_summary[-1]["status"] = f"Failed: {str(e)}"
 
     def generate_report(self):
         """Create professional reports (JSON, Markdown, HTML)"""
@@ -1878,11 +1924,12 @@ class ReconMaster:
                 "version": PRO_VERSION
             },
             "statistics": {
-                "subdomains_found": len(self.subdomains),
+                "total_subdomains": len(self.subdomains),
                 "live_hosts": len(self.live_domains),
+                "total_urls": len(self.urls),
                 "vulnerabilities": len(self.vulns),
-                "endpoints_discovered": len(self.urls),
-                "js_files_analyzed": len(self.js_files)
+                "js_files_analyzed": len(self.js_files),
+                "plugin_activity": getattr(self, 'plugin_summary', [])
             },
             "findings": {
                 "critical": len([v for v in self.vulns if v.get("info", {}).get("severity") == "critical"]),
@@ -1941,11 +1988,15 @@ class ReconMaster:
             for url, techs in list(self.tech_stack.items())[:10]:
                 f.write(f"- **{url}**: {', '.join(techs)}\n")
 
-            f.write(f"\n## 📊 Data Mapping\n")
             f.write(f"- Full Reports: `{os.path.abspath(self.output_dir)}`\n")
             f.write(f"- Subdomains: `./subdomains/all_subdomains.txt`\n")
             f.write(f"- Screenshots: `./screenshots/`\n")
-            f.write(f"- Endpoints: `./endpoints/all_urls.txt`\n")
+            f.write(f"- Endpoints: `./endpoints/all_urls.txt`\n\n")
+
+            if hasattr(self, 'plugin_summary') and self.plugin_summary:
+                f.write("## 🔌 Plugin Execution Summary\n")
+                for p in self.plugin_summary:
+                    f.write(f"- **{p['name']}** (v{p['version']}): {p['status']}\n")
 
         # 🌐 full_report.html (Premium Interactive Dashboard)
         html_content = self._generate_premium_html_report(duration, end_dt)

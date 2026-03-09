@@ -9,11 +9,10 @@ try:
 except ImportError:
     _HAVE_AIOHTTP = False
 
-logger = logging.getLogger("ReconMaster.Plugins.Cloud")
-
 class CloudSecurityPlugin(ReconPlugin):
     name = "Cloud Security"
     description = "Checks for exposed cloud infrastructure (AWS/Azure/GCP) and probes bucket patterns"
+    version = "1.0.0"
 
     async def run(self, recon):
         cloud_techs = ["aws", "amazon", "azure", "gcp", "google cloud", "s3", "bucket", "blob"]
@@ -33,11 +32,11 @@ class CloudSecurityPlugin(ReconPlugin):
             f"{target_slug}-public", f"{target_slug}-internal", f"test-{target_slug}"
         ]
 
-        logger.info(f"Probing {len(potential_buckets)} cloud bucket patterns for '{target_slug}'...")
+        self._log(f"Probing {len(potential_buckets)} cloud bucket patterns for '{target_slug}'...")
 
         # Run nuclei for detected tech
         if has_cloud:
-            logger.info("Cloud infrastructure detected. Running nuclei-based cloud checks...")
+            self._log("Cloud infrastructure detected. Running nuclei-based cloud checks...")
             live_file = recon.files.get("live_subdomains", os.path.join(recon.output_dir, "subdomains", "live_hosts.txt"))
             cmd = [
                 "nuclei", "-l", live_file,
@@ -77,10 +76,7 @@ class CloudSecurityPlugin(ReconPlugin):
             async with session.head(url, allow_redirects=True) as resp:
                 if resp.status in [200, 403]: # 403 means it exists but protected
                     msg = "Publicly Accessible" if resp.status == 200 else "Protected"
-                    logger.warning(f"Cloud Bucket Identified ({provider}): {url} [{msg}]")
-                    recon.vulns.append({
-                        "info": {"name": f"Cloud Asset Identified ({provider})", "severity": "info" if resp.status == 403 else "medium"},
-                        "matched-at": url
-                    })
+                    self._log(f"Cloud Bucket Identified ({provider}): {url} [{msg}]", logging.WARNING)
+                    self._add_finding(recon, f"Cloud Asset Identified ({provider})", "info" if resp.status == 403 else "medium", url)
         except:
             pass

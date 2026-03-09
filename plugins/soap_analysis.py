@@ -10,11 +10,10 @@ try:
 except ImportError:
     _HAVE_AIOHTTP = False
 
-logger = logging.getLogger("ReconMaster.Plugins.SOAP")
-
 class SOAPAnalysisPlugin(ReconPlugin):
     name = "SOAP API Analysis"
     description = "Discovers WSDL files and analyzes SOAP endpoints for misconfigurations"
+    version = "1.0.0"
 
     # Common WSDL/SOAP paths
     SOAP_PATHS = [
@@ -23,7 +22,7 @@ class SOAPAnalysisPlugin(ReconPlugin):
     ]
 
     async def run(self, recon):
-        logger.info("Starting SOAP API analysis module...")
+        self._log("Starting SOAP API analysis module...")
         
         # Gather targets
         targets = set()
@@ -35,7 +34,7 @@ class SOAPAnalysisPlugin(ReconPlugin):
             if url.endswith((".asmx", ".svc", ".php", ".jsp")):
                 targets.add(url)
 
-        logger.info(f"Probing {len(targets)} targets for SOAP/WSDL interfaces...")
+        self._log(f"Probing {len(targets)} targets for SOAP/WSDL interfaces...")
 
         if _HAVE_AIOHTTP:
             await self._probe_soap_endpoints(recon, targets)
@@ -60,16 +59,9 @@ class SOAPAnalysisPlugin(ReconPlugin):
                 if resp.status == 200:
                     text = await resp.text()
                     if "wsdl:definitions" in text or "definitions" in text.lower() and "<soap:binding" in text.lower():
-                        logger.warning(f"[!] SOAP/WSDL Endpoint Found: {url}")
+                        self._log(f"[!] SOAP/WSDL Endpoint Found: {url}", logging.WARNING)
                         
-                        recon.vulns.append({
-                            "info": {
-                                "name": "SOAP/WSDL Endpoint Discovered",
-                                "severity": "info",
-                                "description": "Exposed WSDL file found, which may leak API structure."
-                            },
-                            "matched-at": url
-                        })
+                        self._add_finding(recon, "SOAP/WSDL Endpoint Discovered", "info", url, description="Exposed WSDL file found, which may leak API structure.")
                         
                         # Log to findings file
                         soap_file = os.path.join(recon.output_dir, "vulns", "soap_endpoints.txt")

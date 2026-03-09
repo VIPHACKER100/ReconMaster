@@ -7,6 +7,7 @@ logger = logging.getLogger("ReconMaster.Plugins.WordPress")
 class WordPressPlugin(ReconPlugin):
     name = "WordPress Scanner"
     description = "Specialized scanning for WordPress sites"
+    version = "1.0.0"
 
     async def run(self, recon):
         # Check if WordPress is in tech stack
@@ -18,7 +19,7 @@ class WordPressPlugin(ReconPlugin):
         if not wp_targets:
             return
 
-        logger.info(f"WordPress detected on {len(wp_targets)} targets. Running specialized templates...")
+        self._log(f"WordPress detected on {len(wp_targets)} targets. Running specialized templates...")
         
         # Save targets to temp file
         temp_file = os.path.join(recon.output_dir, "vulns", "wp_targets.txt")

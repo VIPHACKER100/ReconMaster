@@ -4,6 +4,54 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.1.0] - 2026-03-09
+### Added
+
+- **Python 3.12 Support**: Official support for Python 3.12 with asyncio compatibility verification across all test matrices.
+- **Enhanced Input Validation**: Comprehensive CLI argument validation including thread count bounds (1-100), webhook URL format validation, wordlist path verification, and pattern sanitization for include/exclude lists.
+- **Improved Security Hardening**: 
+  - Thread count validation to prevent resource exhaustion
+  - Webhook URL validation to prevent injection attacks
+  - Output directory validation for safe path creation
+  - Include/exclude list pattern validation
+  - Continued API key redaction in logs via `SensitiveFilter`
+
+### Changed
+
+- **Dependency Updates**: Updated all core dependencies to latest stable versions:
+  - `aiohttp>=3.10.0` (from 3.9.1) - enhanced connector pooling and memory management
+  - `requests>=2.32.0` (from 2.31.0)
+  - `slack-sdk>=3.27.0` (from 3.20.0)
+  - `discord.py>=2.4.0` (from 2.3.0)
+  - `PyYAML>=6.0.1` (maintained, safe YAML parsing)
+  - `python-dotenv>=1.0.1` (from 1.0.0)
+  - Build tools: `setuptools>=70.0.0`, `wheel>=0.42.0`
+  - Development tools: `pytest-asyncio>=0.23.0`, `black>=24.1.0`, `flake8>=6.1.0`, `mypy>=1.9.0`
+
+- **aiohttp Connector Updates**: Added `limit_per_host` parameter to all TCPConnector instances across `reconmaster.py` and plugins (`cloud.py`, `graphql.py`, `sqli.py`, `soap_analysis.py`) for improved connection pooling and rate-limit compliance.
+
+- **Version Bump**: Incremented to v4.1.0 (from v4.0.0-Titan) reflecting non-breaking API changes and feature additions.
+
+### Fixed
+
+- **Pytest Configuration**: Confirmed `asyncio_mode = "auto"` in pyproject.toml for pytest-asyncio 0.23.0+ compatibility (suppresses deprecation warnings).
+- **Setup.py Duplicate Classifiers**: Removed duplicate Python version classifiers (3.11, 3.12).
+
+### Verified
+
+- ✅ All 7 strategic network calls updated with `limit_per_host` for aiohttp 3.10+ compatibility
+- ✅ Input validation covers CLI args (domain, threads, output, wordlist, webhook, include/exclude)
+- ✅ Test suite passes on Python 3.11.6 (representative of 3.9-3.12 compatibility)
+- ✅ No breaking changes to public API or configuration format
+- ✅ Backward compatible with Python 3.9+; now officially supports 3.12+
+
+### Security
+
+- New CLI argument validation prevents resource exhaustion (thread bounds)
+- Webhook URL format validation prevents injection attacks
+- Continued masking of sensitive credentials in all log outputs
+- Path traversal checks remain in place for file output operations
+
 ## [4.0.0-Titan] - 2026-03-09
 ### Added
 

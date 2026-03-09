@@ -47,7 +47,7 @@ class GraphQLDiscoveryPlugin(ReconPlugin):
             logger.warning("aiohttp not found. Skipping GraphQL probing.")
 
     async def _probe_graphql_endpoints(self, recon, targets):
-        connector = aiohttp.TCPConnector(ssl=False, limit=recon.threads)
+        connector = aiohttp.TCPConnector(ssl=False, limit=recon.threads, limit_per_host=30)
         async with aiohttp.ClientSession(connector=connector, timeout=aiohttp.ClientTimeout(total=10)) as session:
             tasks = []
             for base_url in list(targets)[:100]: # Safety limit

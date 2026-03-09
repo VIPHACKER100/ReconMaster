@@ -34,7 +34,7 @@ if requirements_file.exists():
 
 setup(
     name="reconmaster",
-    version = "4.0.0-Titan",
+    version = "4.1.0",
     author="VIPHACKER100 ( Aryan Ahirwar )",
     author_email="VIPHACKER.100.ORG@GMAIL.COM",
     description="Professional-Grade Automated Reconnaissance Framework",
@@ -52,7 +52,7 @@ setup(
     packages=find_packages(),
     py_modules=["reconmaster", "utils", "rate_limiter"],
     
-    # Python version requirement
+    # Python version requirement (3.9+ with explicit 3.12 support)
     python_requires=">=3.9",
     
     # Dependencies
@@ -61,11 +61,13 @@ setup(
     # Testing dependencies
     extras_require={
         "dev": [
-            "pytest>=7.0",
-            "pytest-cov>=4.0",
-            "pytest-timeout>=2.1",
-            "black>=23.1",
-            "flake8>=6.0",
+            "pytest>=7.4.0",
+            "pytest-asyncio>=0.23.0",
+            "pytest-cov>=4.1.0",
+            "pytest-timeout>=2.1.0",
+            "black>=24.1.0",
+            "flake8>=6.1.0",
+            "mypy>=1.9.0",
         ],
     },
     

@@ -94,7 +94,7 @@ class SQLiPlugin(ReconPlugin):
         # Simple detection: append a single quote and check for errors
         payloads = ["'", "\"", "')"]
         
-        connector = aiohttp.TCPConnector(ssl=False, limit=recon.threads)
+        connector = aiohttp.TCPConnector(ssl=False, limit=recon.threads, limit_per_host=30)
         async with aiohttp.ClientSession(connector=connector) as session:
             tasks = []
             for url in urls[:50]: # Limit heuristics for speed

@@ -59,7 +59,7 @@ class CloudSecurityPlugin(ReconPlugin):
         }
         
         # Limit concurrency for probes
-        connector = aiohttp.TCPConnector(limit=10)
+        connector = aiohttp.TCPConnector(limit=10, limit_per_host=5)
         async with aiohttp.ClientSession(connector=connector, timeout=aiohttp.ClientTimeout(total=5)) as session:
             tasks = []
             for b_name in buckets:

@@ -578,7 +578,7 @@ class ReconMaster:
 
         try:
             headers = {"User-Agent": random.choice(self.user_agents)}
-            connector = aiohttp.TCPConnector(ssl=False)
+            connector = aiohttp.TCPConnector(ssl=False, limit=100, limit_per_host=30)
             async with aiohttp.ClientSession(timeout=HTTP_TIMEOUT, connector=connector, headers=headers) as session:
                 async with session.post(self.webhook_url, json=payload) as resp:
                     if resp.status not in [200, 204]:
@@ -931,7 +931,7 @@ class ReconMaster:
         if not target_links:
             return
 
-        connector = aiohttp.TCPConnector(ssl=False, limit=self.threads)
+        connector = aiohttp.TCPConnector(ssl=False, limit=self.threads, limit_per_host=30)
         async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=10), connector=connector) as session:
             async def check_link(url):
                 if not await self.circuit_breaker.check_can_proceed():
@@ -2097,6 +2097,50 @@ def main():
     parser.add_argument("--i-understand-this-requires-authorization", action="store_true", dest="authorized", help="Confirm you have permission to scan the target")
 
     args = parser.parse_args()
+
+    # === INPUT VALIDATION AND SANITIZATION ===
+    # Validate thread count
+    if args.threads < 1 or args.threads > 100:
+        print(f"{Colors.RED}[!] Error: Thread count must be between 1 and 100. Got: {args.threads}{Colors.ENDC}")
+        sys.exit(1)
+    
+    # Validate output directory
+    try:
+        output_parent = os.path.dirname(os.path.abspath(args.output))
+        if not os.path.exists(output_parent):
+            os.makedirs(output_parent, exist_ok=True)
+    except Exception as e:
+        print(f"{Colors.RED}[!] Error: Invalid output directory '{args.output}': {e}{Colors.ENDC}")
+        sys.exit(1)
+    
+    # Validate wordlist if provided
+    if args.wordlist:
+        if not os.path.isfile(args.wordlist):
+            print(f"{Colors.RED}[!] Error: Wordlist file not found: {args.wordlist}{Colors.ENDC}")
+            sys.exit(1)
+    
+    # Validate webhook URL if provided (basic HTTP/HTTPS URL validation)
+    if args.webhook:
+        webhook_pattern = r'^https?://[a-zA-Z0-9\-._~:/?#\[\]@!$&\'()*+,;=]+$'
+        if not re.match(webhook_pattern, args.webhook):
+            print(f"{Colors.RED}[!] Error: Invalid webhook URL format: {args.webhook}{Colors.ENDC}")
+            print(f"{Colors.YELLOW}[*] Expected format: https://discord.com/api/webhooks/... or similar{Colors.ENDC}")
+            sys.exit(1)
+    
+    # Validate include/exclude patterns (basic domain-like pattern validation)
+    for pattern in (args.include or '').split(','):
+        pattern = pattern.strip()
+        if pattern and not re.match(r'^[a-zA-Z0-9.*\-_]+$', pattern):
+            print(f"{Colors.RED}[!] Error: Invalid include pattern: {pattern}{Colors.ENDC}")
+            sys.exit(1)
+    
+    for pattern in (args.exclude or '').split(','):
+        pattern = pattern.strip()
+        if pattern and not re.match(r'^[a-zA-Z0-9.*\-_]+$', pattern):
+            print(f"{Colors.RED}[!] Error: Invalid exclude pattern: {pattern}{Colors.ENDC}")
+            sys.exit(1)
+
+    # ===== END INPUT VALIDATION =====
 
     if not args.authorized:
         print(f"{Colors.RED}[!] Error: You must confirm authorization to scan the target.{Colors.ENDC}")

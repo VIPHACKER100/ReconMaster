@@ -41,7 +41,7 @@ class SOAPAnalysisPlugin(ReconPlugin):
             await self._probe_soap_endpoints(recon, targets)
 
     async def _probe_soap_endpoints(self, recon, targets):
-        connector = aiohttp.TCPConnector(ssl=False, limit=recon.threads)
+        connector = aiohttp.TCPConnector(ssl=False, limit=recon.threads, limit_per_host=30)
         async with aiohttp.ClientSession(connector=connector, timeout=aiohttp.ClientTimeout(total=10)) as session:
             tasks = []
             for base_url in list(targets)[:50]:

@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "reconmaster"
-version = "4.0.0-Titan"
-description = "Automated Reconnaissance Framework for Security Testing"
+version = "4.1.0"
+description = "Professional-Grade Automated Reconnaissance Framework for Security Testing"
 readme = "README.md"
 license = {text = "MIT"}
 authors = [
@@ -23,7 +23,7 @@ keywords = [
     "osint",
 ]
 classifiers = [
-    "Development Status :: 4 - Beta",
+    "Development Status :: 5 - Production/Stable",
     "Environment :: Console",
     "Intended Audience :: Information Technology",
     "Intended Audience :: System Administrators",
@@ -32,8 +32,6 @@ classifiers = [
     "Natural Language :: English",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.7",
-    "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
@@ -43,29 +41,39 @@ classifiers = [
     "Topic :: System :: Monitoring",
     "Topic :: Utilities",
 ]
-requires-python = ">=3.8"
+requires-python = ">=3.9"
 dependencies = [
-    "aiohttp>=3.8.0",
-    "tqdm>=4.60.0",
-    "requests>=2.25.0",
-    "colorama>=0.4.0",
+    "aiohttp>=3.10.0",
+    "tqdm>=4.66.1",
+    "requests>=2.32.0",
+    "colorama>=0.4.6",
+    "PyYAML>=6.0.1",
+    "schedule>=1.2.1",
+    "setuptools>=70.0.0",
+    "wheel>=0.42.0",
+    "arjun>=2.2.1",
+    "python-dotenv>=1.0.1",
+    "slack-sdk>=3.27.0",
+    "discord.py>=2.4.0",
 ]
 
 [project.optional-dependencies]
 dev = [
-    "pytest>=6.0",
-    "pytest-cov>=2.10",
-    "pytest-timeout>=1.4",
-    "black>=20.8b1",
-    "flake8>=3.8",
-    "mypy>=0.900",
-    "twine>=3.0",
-    "build>=0.7",
+    "pytest>=7.4.0",
+    "pytest-asyncio>=0.23.0",
+    "pytest-cov>=4.1.0",
+    "pytest-timeout>=2.1.0",
+    "black>=24.1.0",
+    "flake8>=6.1.0",
+    "mypy>=1.9.0",
+    "twine>=4.0",
+    "build>=0.10",
 ]
 test = [
-    "pytest>=6.0",
-    "pytest-cov>=2.10",
-    "pytest-timeout>=1.4",
+    "pytest>=7.4.0",
+    "pytest-asyncio>=0.23.0",
+    "pytest-cov>=4.1.0",
+    "pytest-timeout>=2.1.0",
     "mock>=4.0",
 ]
 
@@ -91,7 +99,7 @@ reconmaster = [
 
 [tool.black]
 line-length = 100
-target-version = ['py38']
+target-version = ['py39', 'py310', 'py311', 'py312']
 include = '\.pyi?$'
 extend-exclude = '''
 /(
@@ -117,7 +125,7 @@ use_parentheses = true
 ensure_newline_before_comments = true
 
 [tool.mypy]
-python_version = "3.8"
+python_version = "3.9"
 warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = false
@@ -131,6 +139,7 @@ testpaths = ["tests"]
 python_files = ["test_*.py", "*_test.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
+asyncio_mode = "auto"  # pytest-asyncio 0.23.0+ compatibility
 markers = [
     "unit: unit tests",
     "integration: integration tests",

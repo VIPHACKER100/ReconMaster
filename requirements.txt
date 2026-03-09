@@ -1,29 +1,29 @@
-# ReconMaster v4.0.0-Titan Requirements
-# Optimized for Python 3.9+ 
+# ReconMaster v4.1.0 Requirements
+# Updated March 2026 - Python 3.9+ with Python 3.12+ support
 
-# Core Dependencies
-aiohttp>=3.9.1
-tqdm>=4.66.1
-requests>=2.31.0
-colorama>=0.4.6
-PyYAML>=6.0.1
-schedule>=1.2.1
+# Core Dependencies - Latest Stable
+aiohttp>=3.10.0         # Async HTTP client (latest stable; 4.x does not exist on PyPI yet)
+tqdm>=4.66.1            # Progress bars
+requests>=2.32.0        # HTTP requests
+colorama>=0.4.6         # Terminal colors
+PyYAML>=6.0.1           # Safe YAML parsing
+schedule>=1.2.1         # Task scheduling
 
 # Tool Integration & Infrastructure
-setuptools>=68.0.0
-wheel>=0.40.0
-arjun>=2.2.1
+setuptools>=70.0.0      # Build backend
+wheel>=0.42.0           # Wheel distribution
+arjun>=2.2.1            # Parameter discovery (async compatible)
 
-# Advanced Alerting & AI
-python-dotenv>=1.0.0
-slack-sdk>=3.20.0
-discord.py>=2.3.0
+# Advanced Alerting & Integration
+python-dotenv>=1.0.1    # Environment variables
+slack-sdk>=3.27.0       # Slack webhook integration
+discord.py>=2.4.0       # Discord webhook integration
 
-# Development & Professional Maintenance
-pytest>=7.4.0
-pytest-asyncio>=0.21.1
-pytest-cov>=4.1.0
-pytest-timeout>=2.1.0
-black>=23.7.0
-flake8>=6.1.0
-mypy>=1.5.0
+# Development & QA Tools
+pytest>=7.4.0           # Testing framework
+pytest-asyncio>=0.23.0  # AsyncIO test support (mode='auto' to suppress warnings)
+pytest-cov>=4.1.0       # Coverage reporting
+pytest-timeout>=2.1.0   # Test timeout
+black>=24.1.0           # Code formatter
+flake8>=6.1.0           # Code linter
+mypy>=1.9.0             # Static type checker

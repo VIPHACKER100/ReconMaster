@@ -1,3 +1,70 @@
+Metadata-Version: 2.4
+Name: reconmaster
+Version: 4.1.0
+Summary: Professional-Grade Automated Reconnaissance Framework for Security Testing
+Home-page: https://github.com/VIPHACKER100/ReconMaster
+Author: VIPHACKER100 ( Aryan Ahirwar )
+Author-email: "VIPHACKER100 ( Aryan Ahirwar )" <VIPHACKER.100.ORG@GMAIL.COM>
+License: MIT
+Project-URL: Homepage, https://github.com/VIPHACKER100/ReconMaster
+Project-URL: Documentation, https://github.com/VIPHACKER100/ReconMaster/wiki
+Project-URL: Repository, https://github.com/VIPHACKER100/ReconMaster.git
+Project-URL: Bug Tracker, https://github.com/VIPHACKER100/ReconMaster/issues
+Project-URL: Changelog, https://github.com/VIPHACKER100/ReconMaster/blob/main/CHANGELOG.md
+Keywords: reconnaissance,security,testing,subdomain,enumeration,scanning,penetration-testing,infosec,osint
+Classifier: Development Status :: 5 - Production/Stable
+Classifier: Environment :: Console
+Classifier: Intended Audience :: Information Technology
+Classifier: Intended Audience :: System Administrators
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Natural Language :: English
+Classifier: Operating System :: OS Independent
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Topic :: Security
+Classifier: Topic :: System :: Networking
+Classifier: Topic :: System :: Monitoring
+Classifier: Topic :: Utilities
+Requires-Python: >=3.9
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: aiohttp>=3.10.0
+Requires-Dist: tqdm>=4.66.1
+Requires-Dist: requests>=2.32.0
+Requires-Dist: colorama>=0.4.6
+Requires-Dist: PyYAML>=6.0.1
+Requires-Dist: schedule>=1.2.1
+Requires-Dist: setuptools>=70.0.0
+Requires-Dist: wheel>=0.42.0
+Requires-Dist: arjun>=2.2.1
+Requires-Dist: python-dotenv>=1.0.1
+Requires-Dist: slack-sdk>=3.27.0
+Requires-Dist: discord.py>=2.4.0
+Provides-Extra: dev
+Requires-Dist: pytest>=7.4.0; extra == "dev"
+Requires-Dist: pytest-asyncio>=0.23.0; extra == "dev"
+Requires-Dist: pytest-cov>=4.1.0; extra == "dev"
+Requires-Dist: pytest-timeout>=2.1.0; extra == "dev"
+Requires-Dist: black>=24.1.0; extra == "dev"
+Requires-Dist: flake8>=6.1.0; extra == "dev"
+Requires-Dist: mypy>=1.9.0; extra == "dev"
+Requires-Dist: twine>=4.0; extra == "dev"
+Requires-Dist: build>=0.10; extra == "dev"
+Provides-Extra: test
+Requires-Dist: pytest>=7.4.0; extra == "test"
+Requires-Dist: pytest-asyncio>=0.23.0; extra == "test"
+Requires-Dist: pytest-cov>=4.1.0; extra == "test"
+Requires-Dist: pytest-timeout>=2.1.0; extra == "test"
+Requires-Dist: mock>=4.0; extra == "test"
+Dynamic: author
+Dynamic: home-page
+Dynamic: license-file
+Dynamic: requires-python
+
 <p align="center">
   <img src="assets/logo.svg" alt="ReconMaster Logo" width="250">
   <br>
@@ -6,12 +73,12 @@
   <i>Empowering Bug Bounty Hunters and Security Engineers</i>
 </p>
 
-# 🛰️ ReconMaster v4.1.0
+# 🛰️ ReconMaster v4.0.0-Titan
 
 <p align="center">
   <img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License">
-  <img src="https://img.shields.io/badge/Python-3.9_to_3.12-brightgreen.svg" alt="Python">
-  <img src="https://img.shields.io/badge/Version-4.1.0-red.svg" alt="Version">
+  <img src="https://img.shields.io/badge/Python-3.9+-brightgreen.svg" alt="Python">
+  <img src="https://img.shields.io/badge/Version-4.0.0--Titan-red.svg" alt="Version">
   <img src="https://img.shields.io/badge/Status-Production--Ready-success.svg" alt="Status">
   <img src="https://img.shields.io/badge/Async-Powered-00F2FF.svg" alt="Async">
   <img src="https://img.shields.io/badge/Docker-Supported-2496ED.svg" alt="Docker">
@@ -302,7 +369,7 @@ ls -la recon_results/example.com_*
 </tr>
 <tr>
 <td><b>Python Version</b></td>
-<td>3.9 to 3.12 (officially supported)</td>
+<td>3.9 or higher</td>
 </tr>
 <tr>
 <td><b>Memory</b></td>

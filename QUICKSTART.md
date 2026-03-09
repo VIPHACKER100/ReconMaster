@@ -1,4 +1,4 @@
-# ReconMaster v3.2.0-Elite Quick Reference Guide
+# ReconMaster v4.0.0-Titan Quick Reference Guide
 
 ## 🚀 Elite Commands
 
@@ -52,7 +52,8 @@ Use the **Advanced Security Scan** workflow in GitHub Actions:
 | `vulns/` | **Nuclei** results and **VIP SQLi Scanner** findings |
 | `endpoints/` | **Katana** crawled URLs and high-value candidates |
 | `js/` | Extracted JavaScript links for analysis |
-| `reports/` | **Premium Dashboard 2.0** (`full_report.html`) and statistics |
+| `reports/` | **Titan Dashboard 2.0** (`full_report.html`) and statistics |
+| `exports/` | **SIEM** (JSON) and **Burp/ZAP** integration files |
 | `nmap/` | Target-specific port scan results |
 
 ---
@@ -81,10 +82,10 @@ cat recon_results/target.com_*/vulns/exposed_secrets.txt
 
 ## 🛠️ Maintenance & Troubleshooting
 
-### v3.2 Tool Verification
+### v4.0.0 Tool Verification
 If a module fails, ensure the underlying tool is installed:
 ```powershell
-# Re-run Elite Tool Installer
+# Re-run Titan Tool Installer
 .\install_tools_final.ps1
 ```
 
@@ -108,10 +109,12 @@ python reconmaster.py -d target.com --daily --webhook YOUR_WEBHOOK_URL --i-under
 ReconMaster automatically loads plugins from the `plugins/` directory.
 - **VIP SQLi Scanner**: Triggered on input fields and parameters.
 - **Cloud Security**: Checks for S3 bucket exposures and cloud misconfigs.
+- **GraphQL Discovery**: Detects exposed GraphQL endpoints and introspection.
+- **SIEM Export**: Formats results for Elastic/Splunk ingestion.
 
 ---
 
-## 🔐 Best Practices v3.2
+## 🔐 Best Practices v4.0.0-Titan
 
 1. **Authorization**: Use the mandatory `--i-understand-this-requires-authorization` flag.
 2. **Scan Scope**: Always verify the `-d` (domain) matches your authorized target.

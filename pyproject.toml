@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "reconmaster"
-version = "3.1.0"
+version = "4.0.0-Titan"
 description = "Automated Reconnaissance Framework for Security Testing"
 readme = "README.md"
 license = {text = "MIT"}

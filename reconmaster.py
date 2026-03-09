@@ -5,9 +5,9 @@ Author: VIPHACKER100 ( Aryan Ahirwar )
 License: MIT
 """
 
-__version__ = "3.1.0"
-VERSION = "3.1.0"
-PRO_VERSION = "3.1.0-Pro"
+__version__ = "4.0.0-Titan"
+VERSION = "4.0.0"
+PRO_VERSION = "4.0.0-Titan"
 AUTHOR = "VIPHACKER100 ( Aryan Ahirwar )"
 GITHUB = "https://github.com/VIPHACKER100/ReconMaster"
 
@@ -1497,15 +1497,16 @@ class ReconMaster:
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ReconMaster Elite v3.2 - {self.target}</title>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <title>Titan Dashboard 2.0 - {self.target}</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&family=JetBrains+Mono&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         :root {{
-            --bg: #0b0f1a;
-            --sidebar: #111827;
+            --bg: #0f172a;
+            --sidebar: #1e293b;
             --card: rgba(30, 41, 59, 0.7);
             --accent: #38bdf8;
+            --accent-glow: rgba(56, 189, 248, 0.3);
             --text-main: #f8fafc;
             --text-dim: #94a3b8;
             --critical: #ef4444;
@@ -1649,7 +1650,7 @@ class ReconMaster:
 </head>
 <body>
     <sidebar>
-        <div class="logo">ReconMaster Elite</div>
+        <div class="logo">Titan v4.0.0</div>
         <nav>
             <a href="#overview" class="active">Overview</a>
             <a href="#vulnerabilities">Findings</a>
@@ -1659,7 +1660,7 @@ class ReconMaster:
         </nav>
         <div style="margin-top: auto; font-size: 0.75rem; color: var(--text-dim);">
             Target: {self.target}<br>
-            Elite v3.2.0 • Pro Edition
+            v4.0.0-Titan • Platinum Edition
         </div>
     </sidebar>
 

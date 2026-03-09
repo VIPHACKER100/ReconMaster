@@ -4,6 +4,18 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.0.0-Titan] - 2026-03-09
+### Added
+- **Titan Dashboard 2.0**: Functional real-time monitoring dashboard with live data integration.
+- **GraphQL Discovery**: Native plugin for detecting and introspecting GraphQL endpoints.
+- **SIEM Export**: New module to export results directly to Elastic/Splunk (JSON).
+- **SOAP API Analysis**: Integrated WSDL discovery and basic analysis logic.
+- **Enhanced Cloud Probing**: Expanded support for multi-cloud asset discovery.
+
+### Changed
+- **Version Synchronization**: Unified versioning across codebase (v4.0.0-Titan).
+- **Core Optimization**: Improved asynchronous orchestrator for better plugin handling.
+
 ## [3.2.0-Elite] - 2026-02-10
 ### Added
 - **VIP SQLi Scanner**: Integrated a high-fidelity native SQL injection detection engine with heuristic analysis and Nuclei integration.

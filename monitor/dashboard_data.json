@@ -1,0 +1,15 @@
+[
+  {
+    "target": "viphacker100.com",
+    "subdomains": 5,
+    "vulns": {
+      "critical": 0,
+      "high": 1,
+      "medium": 0,
+      "low": 0,
+      "info": 0
+    },
+    "lastScan": "2026-03-09_21-05-00",
+    "status": "Verified"
+  }
+]

@@ -6,12 +6,12 @@
   <i>Empowering Bug Bounty Hunters and Security Engineers</i>
 </p>
 
-# 🛰️ ReconMaster v3.2.0-Elite
+# 🛰️ ReconMaster v4.0.0-Titan
 
 <p align="center">
   <img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License">
   <img src="https://img.shields.io/badge/Python-3.9+-brightgreen.svg" alt="Python">
-  <img src="https://img.shields.io/badge/Version-3.2.0--Elite-red.svg" alt="Version">
+  <img src="https://img.shields.io/badge/Version-4.0.0--Titan-red.svg" alt="Version">
   <img src="https://img.shields.io/badge/Status-Production--Ready-success.svg" alt="Status">
   <img src="https://img.shields.io/badge/Async-Powered-00F2FF.svg" alt="Async">
   <img src="https://img.shields.io/badge/Docker-Supported-2496ED.svg" alt="Docker">

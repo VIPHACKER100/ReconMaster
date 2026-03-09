@@ -38,7 +38,7 @@ def print_monitoring_banner():
     """Display monitoring system banner"""
     banner = f"""{Colors.CYAN}{Colors.BOLD}
 ╔═══════════════════════════════════════════════╗
-║  ReconMaster Monitoring System v3.0.0-Pro    ║
+║  ReconMaster Monitoring System v4.0.0-Titan  ║
 ║  Continuous Security Reconnaissance          ║
 ╚═══════════════════════════════════════════════╝
 {Colors.ENDC}"""
@@ -59,7 +59,7 @@ class ReconScheduler:
         self.config = self.load_config()
         self.diff_detector = DiffDetector()
         self.alert_manager = AlertManager(self.config.get("alerting", {}))
-        self.base_dir = Path(__file__).parent.parent
+        self.base_dir = Path(os.path.abspath(__file__)).parent.parent
         self.monitor_dir = self.base_dir / "monitor_results"
         self.monitor_dir.mkdir(exist_ok=True)
         
@@ -187,6 +187,47 @@ class ReconScheduler:
         
         # Save metadata
         self.save_scan_metadata(target, scan_dir, changes=changes)
+        
+        # Update aggregate dashboard data
+        self.update_dashboard_data()
+
+    def update_dashboard_data(self):
+        """Aggregate data from all monitored targets for the dashboard"""
+        dashboard_file = self.base_dir / "monitor" / "dashboard_data.json"
+        
+        all_stats = []
+        total_vulns = 0
+        total_critical = 0
+        
+        for target_path in self.monitor_dir.iterdir():
+            if not target_path.is_dir():
+                continue
+            
+            target = target_path.name
+            scans = sorted([d for d in target_path.iterdir() if d.is_dir()])
+            if not scans:
+                continue
+            
+            latest_scan = scans[-1]
+            summary_file = latest_scan / "summary.json"
+            
+            if summary_file.exists():
+                with open(summary_file, 'r') as f:
+                    summary = json.load(f)
+                    
+                target_stats = {
+                    "target": target,
+                    "subdomains": summary.get("statistics", {}).get("live_hosts", 0),
+                    "vulns": summary.get("findings", {}),
+                    "lastScan": summary.get("scan_info", {}).get("end_time", "Unknown"),
+                    "status": "Verified"
+                }
+                all_stats.append(target_stats)
+                
+        # Write to central file
+        with open(dashboard_file, 'w') as f:
+            json.dump(all_stats, f, indent=2)
+        print(f"[+] Dashboard data updated: {dashboard_file}")
     
     def get_previous_scan(self, target: str, current_scan: str) -> Optional[str]:
         """Get the most recent previous scan directory"""

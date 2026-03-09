@@ -2,7 +2,7 @@
 """
 ReconMaster Monitoring Scheduler
 Automated reconnaissance scheduling and execution
-Version: 3.0.0-Pro
+Version: 4.0.0-Titan
 Author: VIPHACKER100
 """
 
@@ -217,7 +217,8 @@ class ReconScheduler:
                     
                 target_stats = {
                     "target": target,
-                    "subdomains": summary.get("statistics", {}).get("live_hosts", 0),
+                    "subdomains": summary.get("statistics", {}).get("total_subdomains", 0),
+                    "live_hosts": summary.get("statistics", {}).get("live_hosts", 0),
                     "vulns": summary.get("findings", {}),
                     "lastScan": summary.get("scan_info", {}).get("end_time", "Unknown"),
                     "status": "Verified"

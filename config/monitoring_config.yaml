@@ -64,3 +64,6 @@ monitoring:
   
   # Detect SSL certificate changes
   detect_ssl_changes: true
+  
+  # Detect new high-severity vulnerabilities (Titan Feature)
+  detect_new_vulnerabilities: true

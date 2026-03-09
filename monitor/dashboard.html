@@ -156,6 +156,8 @@
         .bg-critical { background: rgba(239, 68, 68, 0.15); color: var(--critical); }
         .bg-high { background: rgba(249, 115, 22, 0.15); color: var(--high); }
         .bg-medium { background: rgba(234, 179, 8, 0.15); color: var(--medium); }
+        .bg-low { background: rgba(34, 197, 94, 0.15); color: var(--low); }
+        .bg-info { background: rgba(59, 130, 246, 0.15); color: #60a5fa; }
 
         .recent-alerts {
             padding: 24px;
@@ -321,15 +323,17 @@
                     <div class="target-main">
                         <h3>${item.target}</h3>
                         <div class="target-meta">
-                            <span>📡 ${item.subdomains} Hosts</span>
+                            <span>📡 ${item.live_hosts || 0}/${item.subdomains || 0} Hosts</span>
                             <span>🕒 ${item.lastScan}</span>
                             <span>${item.status === 'In Progress' ? '⏳ Scanning' : '✅ Verified'}</span>
                         </div>
                     </div>
                     <div class="severity-badges">
-                        ${crit > 0 ? `<span class="badge bg-critical">${crit} Critical</span>` : ''}
+                        ${crit > 0 ? `<span class="badge bg-critical">${crit} Crit</span>` : ''}
                         ${high > 0 ? `<span class="badge bg-high">${high} High</span>` : ''}
-                        <span class="badge bg-medium">${med} Mod</span>
+                        ${med > 0 ? `<span class="badge bg-medium">${med} Med</span>` : ''}
+                        ${v.low > 0 ? `<span class="badge bg-low">${v.low} Low</span>` : ''}
+                        ${v.info > 0 ? `<span class="badge bg-info">${v.info} Info</span>` : ''}
                     </div>
                 `;
                 list.appendChild(card);

@@ -45,6 +45,9 @@ class DiffDetector:
         if monitoring_config.get("detect_ssl_changes", True):
             self._check_ssl(previous, current)
         
+        if monitoring_config.get("detect_new_vulnerabilities", True):
+            self._check_vulnerabilities(previous, current)
+        
         return self.changes
     
     def _check_subdomains(self, previous: Path, current: Path):
@@ -145,16 +148,19 @@ class DiffDetector:
         """Load subdomains from scan directory"""
         subdomains = set()
         
-        # Try to load from live_domains.txt
-        live_file = scan_dir / "subdomains" / "live_domains.txt"
+        # Try to load from live_subdomains.txt (Titan Standard)
+        live_file = scan_dir / "subdomains" / "live_subdomains.txt"
         if live_file.exists():
             try:
                 with open(live_file, 'r') as f:
                     for line in f:
                         line = line.strip()
-                        if line and line.startswith("http"):
-                            # Extract domain from URL
-                            domain = line.split("://")[1].split("/")[0]
+                        if line:
+                            # Extract domain if it's a URL
+                            if "://" in line:
+                                domain = line.split("://")[1].split("/")[0]
+                            else:
+                                domain = line
                             subdomains.add(domain)
             except Exception as e:
                 print(f"[!] Error loading subdomains: {e}")
@@ -194,14 +200,14 @@ class DiffDetector:
         """Load port scan summary"""
         port_summary = {}
         
-        reports_dir = scan_dir / "reports"
-        if not reports_dir.exists():
+        nmap_dir = scan_dir / "nmap"
+        if not nmap_dir.exists():
             return port_summary
         
-        # Parse nmap output files
-        for nmap_file in reports_dir.glob("*_nmap.txt"):
+        # Parse nmap output files (Titan Standard)
+        for nmap_file in nmap_dir.glob("*.txt"):
             try:
-                host = nmap_file.stem.replace("_nmap", "")
+                host = nmap_file.stem
                 open_ports = []
                 
                 with open(nmap_file, 'r') as f:
@@ -264,3 +270,41 @@ class DiffDetector:
                 for change in low:
                     f.write(f"- {change['description']}\n")
                 f.write("\n")
+
+    def _check_vulnerabilities(self, previous: Path, current: Path):
+        """Check for new critical/high vulnerabilities using summary.json"""
+        prev_summary = self._load_json(previous / "summary.json")
+        curr_summary = self._load_json(current / "summary.json")
+        
+        if not prev_summary or not curr_summary:
+            return
+
+        prev_vulns = prev_summary.get("findings", {})
+        curr_vulns = curr_summary.get("findings", {})
+        
+        # If total critical or high increased
+        if curr_vulns.get("critical", 0) > prev_vulns.get("critical", 0):
+            diff = curr_vulns["critical"] - prev_vulns["critical"]
+            self.changes.append({
+                "type": "new_critical_vulnerability",
+                "severity": "critical",
+                "description": f"🚨 ALERT: {diff} new CRITICAL vulnerability detected since last scan!",
+            })
+            
+        if curr_vulns.get("high", 0) > prev_vulns.get("high", 0):
+            diff = curr_vulns["high"] - prev_vulns["high"]
+            self.changes.append({
+                "type": "new_high_vulnerability",
+                "severity": "high",
+                "description": f"⚠️ ALERT: {diff} new HIGH vulnerability detected since last scan!",
+            })
+
+    def _load_json(self, path: Path) -> Optional[Dict]:
+        """Utility to load JSON safely"""
+        if not path.exists():
+            return None
+        try:
+            with open(path, 'r') as f:
+                return json.load(f)
+        except:
+            return None

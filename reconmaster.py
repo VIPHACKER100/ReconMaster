@@ -1510,8 +1510,10 @@ class ReconMaster:
         # Calculate technology distribution
         tech_dist = {}
         for techs in self.tech_stack.values():
-            for t in techs:
-                tech_dist[t] = tech_dist.get(t, 0) + 1
+            if techs:
+                for t in techs:
+                    t_str = str(t)
+                    tech_dist[t_str] = tech_dist.get(t_str, 0) + 1
         top_techs = dict(sorted(tech_dist.items(), key=lambda x: x[1], reverse=True)[:10])
 
         html_template = f"""
@@ -1732,19 +1734,19 @@ class ReconMaster:
                     <div style="width: 100%;">
                         <div style="display: flex; justify-content: space-between; align-items: flex-start;">
                             <div>
-                                <span class="severity-pill bg-{v.get('info', {{}}).get('severity', 'info').lower() if v.get('info') else 'info'}">{v.get('info', {{}}).get('severity', 'info') if v.get('info') else 'INFO'}</span>
-                                <strong style="margin-left: 10px; font-size: 1.1rem;">{v.get('info', {{}}).get('name', 'Discovery') if v.get('info') else 'Discovery'}</strong>
+                                <span class="severity-pill bg-{v.get('info', {}).get('severity', 'info').lower() if v.get('info') else 'info'}">{v.get('info', {}).get('severity', 'info') if v.get('info') else 'INFO'}</span>
+                                <strong style="margin-left: 10px; font-size: 1.1rem;">{v.get('info', {}).get('name', 'Discovery') if v.get('info') else 'Discovery'}</strong>
                                 <span style="margin-left: 10px; opacity: 0.5; font-size: 0.8rem;">[via {v.get('plugin', 'Core')}]</span>
                             </div>
                             <div style="font-family: 'JetBrains Mono', monospace; color: var(--accent); font-weight: 700;">
-                                {f"Score: {{v.get('info', {{}}).get('priority_score', 'N/A')}}" if v.get('info', {{}}).get('priority_score') else ""}
+                                {f"Score: {v.get('info', {}).get('priority_score', 'N/A')}" if v.get('info', {}).get('priority_score') else ""}
                             </div>
                         </div>
                         <div style="color: var(--text-dim); margin-top: 10px; font-size: 0.95rem;">
                             <code style="background: rgba(0,0,0,0.3); padding: 4px 8px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.1); display: inline-block; width: 100%; word-break: break-all;">{v.get('matched-at', 'N/A')}</code>
                         </div>
                         <div style="margin-top: 12px; font-size: 0.85rem; line-height: 1.5; color: #cbd5e1; padding: 12px; background: rgba(0,0,0,0.2); border-radius: 8px;">
-                            <strong>Remediation:</strong> {v.get('info', {{}}).get('description', 'Review and apply security patches.')}
+                            <strong>Remediation:</strong> {v.get('info', {}).get('description', 'Review and apply security patches.')}
                         </div>
                     </div>
                 </div>
@@ -1757,7 +1759,7 @@ class ReconMaster:
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem;">
                 {"".join([f'''
                 <div class="stat-card" style="border-left: 4px solid var(--accent);">
-                    <div style="font-weight: 700; margin-bottom: 12px; font-size: 1.1rem; color: var(--accent);">Intelligence: {v.get('info', {{}}).get('name') if v.get('info') else 'Finding'}</div>
+                    <div style="font-weight: 700; margin-bottom: 12px; font-size: 1.1rem; color: var(--accent);">Intelligence: {v.get('info', {}).get('name') if v.get('info') else 'Finding'}</div>
                     <div style="color: var(--text-dim); font-size: 0.95rem; line-height: 1.6;">{self._generate_ai_profile(v)}</div>
                     <div style="margin-top: 15px; font-size: 0.8rem; opacity: 0.6; display: flex; align-items: center; gap: 5px;">
                         <span>🔗</span> {v.get('matched-at')}

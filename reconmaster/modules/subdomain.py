@@ -22,11 +22,26 @@ class SubdomainModule:
         amass_file = os.path.join(self.recon.dirs["subdomains"], "amass.txt")
         all_passive = os.path.join(self.recon.dirs["subdomains"], "all_passive.txt")
 
+        # Prepare environment variables with API keys
+        env = os.environ.copy()
+        
+        censys_id = self.recon.api_keys.get("censys_id")
+        censys_secret = self.recon.api_keys.get("censys_secret")
+        if censys_id and censys_secret:
+            env["CENSYS_API_ID"] = censys_id
+            env["CENSYS_API_SECRET"] = censys_secret
+            env["AMASS_CENSYS_API_ID"] = censys_id
+            env["AMASS_CENSYS_API_SECRET"] = censys_secret
+            
+        sectrails = self.recon.api_keys.get("securitytrails")
+        if sectrails:
+            env["SECURITYTRAILS_API_KEY"] = sectrails
+
         # Commands
         tasks = [
-            self.recon.tools.run_command(["subfinder", "-d", self.recon.target, "-o", subfinder_file, "-silent"]),
+            self.recon.tools.run_command(["subfinder", "-d", self.recon.target, "-o", subfinder_file, "-silent"], env=env),
             self.recon.tools.run_command(["assetfinder", "--subs-only", self.recon.target]),
-            self.recon.tools.run_command(["amass", "enum", "-passive", "-d", self.recon.target, "-o", amass_file], timeout=600)
+            self.recon.tools.run_command(["amass", "enum", "-passive", "-d", self.recon.target, "-o", amass_file], timeout=600, env=env)
         ]
 
         results = await asyncio.gather(*tasks)

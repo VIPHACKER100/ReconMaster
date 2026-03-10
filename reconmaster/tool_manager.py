@@ -22,21 +22,55 @@ class ToolManager:
     def verify_tools(self, critical_tools: List[str], optional_tools: List[str]) -> List[str]:
         """Verify presence of tools and resolve to absolute paths"""
         missing_critical = []
+        
+        # Helper for install instructions
+        install_hints = {
+            "subfinder": "go install -v github.com/projectdiscovery/subfinder/v2/cmd/subfinder@latest",
+            "assetfinder": "go install github.com/tomnomnom/assetfinder@latest",
+            "amass": "go install -v github.com/owasp-amass/amass/v4/...@master",
+            "ffuf": "go install github.com/ffuf/ffuf/v2@latest",
+            "httpx": "go install -v github.com/projectdiscovery/httpx/cmd/httpx@latest",
+            "nuclei": "go install -v github.com/projectdiscovery/nuclei/v3/cmd/nuclei@latest",
+            "gowitness": "go install github.com/sensepost/gowitness@latest",
+            "katana": "go install github.com/projectdiscovery/katana/cmd/katana@latest"
+        }
+
         for tool in critical_tools:
             path = shutil.which(tool)
             if not path:
                 missing_critical.append(tool)
+                hint = install_hints.get(tool, f"Please install {tool} manually")
+                logger.error(f"CRITICAL Tool Missing: {tool}")
+                logger.error(f"  -> Install constraint: {hint}")
             else:
                 self.tool_paths[tool] = os.path.abspath(path)
+                self._log_tool_version(tool, path)
 
         for tool in optional_tools:
             path = shutil.which(tool)
             if path:
                 self.tool_paths[tool] = os.path.abspath(path)
+                self._log_tool_version(tool, path)
             else:
-                logger.warning(f"Optional tool missing: {tool}")
+                logger.warning(f"Optional tool missing: {tool}. Some features will be safely skipped.")
         
         return missing_critical
+
+    def _log_tool_version(self, name: str, path: str):
+        """Silently grab and log the tool version to aid debugging."""
+        import subprocess
+        try:
+            flag = "-V" if name in ["amass", "arjun", "nmap"] else "-version"
+            if name == "gowitness": flag = "version"
+            if name == "assetfinder": return # Has no version flag
+            
+            res = subprocess.run([path, flag], capture_output=True, text=True, timeout=2)
+            out = res.stdout.strip() or res.stderr.strip()
+            # Grab first line as version
+            version_str = out.split('\n')[0][:50]
+            logger.debug(f"{name} path: {path} | ver: {version_str}")
+        except Exception as e:
+            logger.debug(f"Could not determine version for {name}: {e}")
 
     async def run_command(self, cmd: List[str], timeout: int = 300, env: Optional[Dict[str, str]] = None) -> Tuple[str, str, int]:
         """Execute tool commands asynchronously with security and timeout policies"""

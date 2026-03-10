@@ -61,7 +61,7 @@ async def run_scan(args):
 
         # Phase 3: Analysis
         if not args.passive_only:
-            # Run independent tasks concurrently
+            # Run independent tasks concurrently with exception aggregation
             tasks = [
                 vulnerability.scan(),
                 vulnerability.check_takeovers(),
@@ -69,11 +69,25 @@ async def run_scan(args):
                 js_module.crawl(),
                 screenshot.capture()
             ]
-            await asyncio.gather(*tasks)
+            results = await asyncio.gather(*tasks, return_exceptions=True)
+            
+            # Aggregate Errors
+            for i, result in enumerate(results):
+                if isinstance(result, Exception):
+                    task_name = tasks[i].__name__ if hasattr(tasks[i], '__name__') else f"Task-{i}"
+                    logger.error(f"Phase 3 Task Failed ({task_name}): {result}")
+                    recon.vulns.append({
+                         "template-id": "internal-error",
+                         "info": {"name": f"Module Failure: {task_name}", "severity": "info"},
+                         "matched-at": recon.target
+                    })
             
             # Dependent tasks
-            await js_module.analyze_js()
-            await port_scan.scan()
+            try:
+                await js_module.analyze_js()
+                await port_scan.scan()
+            except Exception as e:
+                logger.error(f"Dependent Task Failed: {e}")
 
         # Phase 4: Reporting
         duration = f"{time.time() - start_time:.2f}s"

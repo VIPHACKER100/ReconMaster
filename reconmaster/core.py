@@ -10,21 +10,30 @@ from typing import List, Set, Dict, Any, Optional
 from .http_manager import HTTPManager
 from .tool_manager import ToolManager
 from .utils import safe_run, merge_and_dedupe_text_files, find_wordlist
+from .config import Config
 
 logger = logging.getLogger("ReconMaster.Core")
 
 class ReconMaster:
     """Core orchestrator for the ReconMaster framework"""
-    def __init__(self, target: str, output_dir: str, threads: int = 10, wordlist: Optional[str] = None):
+    def __init__(self, target: str, output_dir: str, threads: Optional[int] = None, wordlist: Optional[str] = None):
+        self.config = Config()
         self.target = self._validate_target(target)
         self.timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
         self.output_dir = os.path.join(output_dir, f"{self.target}_{self.timestamp}")
-        self.threads = threads
+        
+        # Override config threads with CLI if provided
+        self.threads = threads if threads is not None else self.config.get("scan.threads", 10)
+        
+        # Pull API keys securely from config
+        self.api_keys = self.config.get("api_keys", {})
         
         # Initialize Managers
-        self.http = HTTPManager(threads=threads)
+        verify_ssl = self.config.get("scan.verify_ssl", True)
+        timeout = self.config.get("scan.timeout", 300)
+        self.http = HTTPManager(threads=self.threads, timeout=timeout, verify_ssl=verify_ssl)
         self.tools = ToolManager(user_agents=self.http.user_agents)
-        self.tools.set_concurrency(threads)
+        self.tools.set_concurrency(self.threads)
 
         # State and Findings
         self.subdomains: Set[str] = set()

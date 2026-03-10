@@ -1,0 +1,30 @@
+# ReconMaster Configuration
+
+# Scanning Options
+scan:
+  passive_only: false
+  aggressive: false
+  rate_limit: 50  # requests per second
+  timeout: 30     # default seconds
+  retries: 3
+  delay: 1        # seconds between requests
+  verify_ssl: true # Security Hardening: Default to true
+  tool_timeouts:
+    nuclei: 1200
+    katana: 1200
+    amass: 600
+    ffuf: 600
+    subfinder: 300
+    httpx: 300
+
+# API Configuration
+api:
+  # Set these via environment variables for better security
+  # CENSYS_API_ID: ""
+  # CENSYS_API_SECRET: ""
+  # SECURITYTRAILS_API_KEY: ""
+  # VIRUSTOTAL_API_KEY: ""
+
+# Notification Settings
+notifications:
+  webhook_url: "" # Discord/Slack webhook URL

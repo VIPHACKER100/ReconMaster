@@ -1,0 +1,168 @@
+{
+  "scan_date": "2026-03-09T23:14:40.204464",
+  "platform": "Windows",
+  "python_version": "3.11.6",
+  "tools": {
+    "subfinder": {
+      "status": "\u2705 INSTALLED",
+      "path": "c:\\Users\\vipha\\Desktop\\ReconMaster\\bin\\subfinder.EXE",
+      "version": "Unknown version"
+    },
+    "assetfinder": {
+      "status": "\u2705 INSTALLED",
+      "path": "c:\\Users\\vipha\\Desktop\\ReconMaster\\bin\\assetfinder.EXE",
+      "version": "Unknown version"
+    },
+    "amass": {
+      "status": "\u26a0\ufe0f INSTALLED BUT ERROR",
+      "path": "c:\\Users\\vipha\\Desktop\\ReconMaster\\bin\\amass.EXE",
+      "error": "Command '['amass', '--version']' timed out after 5 seconds"
+    },
+    "ffuf": {
+      "status": "\u2705 INSTALLED",
+      "path": "c:\\Users\\vipha\\Desktop\\ReconMaster\\bin\\ffuf.EXE",
+      "version": "Fuzz Faster U Fool - v2.1.0"
+    },
+    "httpx": {
+      "status": "\u2705 INSTALLED",
+      "path": "c:\\Users\\vipha\\Desktop\\ReconMaster\\bin\\httpx.EXE",
+      "version": "Unknown version"
+    },
+    "nuclei": {
+      "status": "\u2705 INSTALLED",
+      "path": "c:\\Users\\vipha\\Desktop\\ReconMaster\\bin\\nuclei.EXE",
+      "version": "Unknown version"
+    },
+    "gowitness": {
+      "status": "\u2705 INSTALLED",
+      "path": "c:\\Users\\vipha\\Desktop\\ReconMaster\\bin\\gowitness.EXE",
+      "version": ""
+    },
+    "katana": {
+      "status": "\u2705 INSTALLED",
+      "path": "c:\\Users\\vipha\\Desktop\\ReconMaster\\bin\\katana.EXE",
+      "version": "Unknown version"
+    },
+    "arjun": {
+      "status": "\u2705 INSTALLED",
+      "path": "C:\\Users\\vipha\\AppData\\Local\\Programs\\Python\\Python311\\Scripts\\arjun.EXE",
+      "version": "Unknown version"
+    },
+    "nmap": {
+      "status": "\u274c NOT INSTALLED",
+      "path": null
+    },
+    "dnsx": {
+      "status": "\u2705 INSTALLED",
+      "path": "c:\\Users\\vipha\\Desktop\\ReconMaster\\bin\\dnsx.EXE",
+      "version": "Unknown version"
+    },
+    "subjs": {
+      "status": "\u2705 INSTALLED",
+      "path": "c:\\Users\\vipha\\Desktop\\ReconMaster\\bin\\subjs.EXE",
+      "version": "subjs version: 1.0.1"
+    }
+  },
+  "libraries": {
+    "asyncio": {
+      "status": "\u2705 AVAILABLE",
+      "required": true
+    },
+    "json": {
+      "status": "\u2705 AVAILABLE",
+      "required": true
+    },
+    "re": {
+      "status": "\u2705 AVAILABLE",
+      "required": true
+    },
+    "subprocess": {
+      "status": "\u2705 AVAILABLE",
+      "required": true
+    },
+    "aiohttp": {
+      "status": "\u2705 AVAILABLE",
+      "version": "3.13.3",
+      "required": false
+    },
+    "yaml": {
+      "status": "\u2705 AVAILABLE",
+      "version": "6.0.1",
+      "required": false
+    },
+    "colorama": {
+      "status": "\u2705 AVAILABLE",
+      "version": "0.4.6",
+      "required": false
+    }
+  },
+  "summary": {
+    "critical_tools_ready": 10,
+    "critical_tools_total": 8,
+    "optional_tools_ready": 10,
+    "libraries_ready": 7,
+    "libraries_total": 7,
+    "overall_status": "INCOMPLETE"
+  },
+  "environment": {
+    "api_credentials": {
+      "RECON_TARGET": null,
+      "CENSYS_API_ID": "NOT SET",
+      "CENSYS_API_SECRET": "NOT SET",
+      "SECURITYTRAILS_API_KEY": "NOT SET",
+      "VIRUSTOTAL_API_KEY": "NOT SET"
+    },
+    "path_count": 25
+  },
+  "connectivity": {
+    "httpx": "\u26a0\ufe0f Possible network issue"
+  },
+  "wordlists": {
+    "dns_common": {
+      "status": "\u2705 FOUND",
+      "path": "C:\\Users\\vipha\\Desktop\\ReconMaster\\wordlists\\dns_common.txt",
+      "size_kb": 1280.34,
+      "lines": 110000
+    },
+    "subdomains_new": {
+      "status": "\u274c NOT FOUND",
+      "path": "C:\\Users\\vipha\\Desktop\\ReconMaster\\wordlists\\subdomains_new.txt"
+    },
+    "directory_list": {
+      "status": "\u2705 FOUND",
+      "path": "C:\\Users\\vipha\\Desktop\\ReconMaster\\wordlists\\directory-list.txt",
+      "size_kb": 244.56,
+      "lines": 29999
+    },
+    "php_fuzz": {
+      "status": "\u2705 FOUND",
+      "path": "C:\\Users\\vipha\\Desktop\\ReconMaster\\wordlists\\php_fuzz.txt",
+      "size_kb": 1.58,
+      "lines": 104
+    },
+    "api_endpoints": {
+      "status": "\u2705 FOUND",
+      "path": "C:\\Users\\vipha\\Desktop\\ReconMaster\\wordlists\\api_endpoints.txt",
+      "size_kb": 4.27,
+      "lines": 285
+    },
+    "common": {
+      "status": "\u2705 FOUND",
+      "path": "C:\\Users\\vipha\\Desktop\\ReconMaster\\wordlists\\common.txt",
+      "size_kb": 37.6,
+      "lines": 4751
+    },
+    "quickhits": {
+      "status": "\u2705 FOUND",
+      "path": "C:\\Users\\vipha\\Desktop\\ReconMaster\\wordlists\\quickhits.txt",
+      "size_kb": 39.18,
+      "lines": 2565
+    },
+    "params": {
+      "status": "\u2705 FOUND",
+      "path": "C:\\Users\\vipha\\Desktop\\ReconMaster\\wordlists\\params.txt",
+      "size_kb": 52.89,
+      "lines": 6453
+    }
+  }
+}

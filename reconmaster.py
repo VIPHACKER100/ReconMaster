@@ -209,12 +209,14 @@ class ReconMaster:
         self.common_wordlist = os.path.join(base_path, "wordlists", "common.txt")
         self.quickhits_wordlist = os.path.join(base_path, "wordlists", "quickhits.txt")
 
-        # Pro features
+        # Pro features (Removed hardcoded keys in v4.1.0-Elite)
         self.webhook_url = None
-        self.censys_id = os.getenv('CENSYS_API_ID') or 'Xq9FjcfL'
-        self.censys_secret = os.getenv('CENSYS_API_SECRET') or '5oQsVfKogh3DeuwM63gCMjQr'
-        self.sectrails_key = os.getenv('SECURITYTRAILS_API_KEY') or 'wf256DDVZSsJHUtpSAs3pX-yQsKWACSM'
-        self.vt_key = os.getenv('VIRUSTOTAL_API_KEY') or '4305df5d2d95222bca49a37e7298208e85fb7c5afe8d1ae1ff6f6f241733fb98'
+        self.censys_id = os.getenv('CENSYS_API_ID')
+        self.censys_secret = os.getenv('CENSYS_API_SECRET')
+        self.sectrails_key = os.getenv('SECURITYTRAILS_API_KEY')
+        self.vt_key = os.getenv('VIRUSTOTAL_API_KEY')
+        
+        self._validate_credentials()
         self.user_agents = [
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36",
             "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36",
@@ -281,6 +283,17 @@ class ReconMaster:
 
         # Configure file logging
         self._setup_logging()
+
+    def _validate_credentials(self):
+        """Check for missing API credentials and log warnings"""
+        missing = []
+        if not self.censys_id or not self.censys_secret: missing.append("CENSYS")
+        if not self.sectrails_key: missing.append("SECURITYTRAILS")
+        if not self.vt_key: missing.append("VIRUSTOTAL")
+        
+        if missing:
+            logger.warning(f"Elite Intelligence Limited: Missing API keys for {', '.join(missing)}")
+            logger.warning("Set environment variables (CENSYS_API_ID, etc.) for full performance.")
 
     def _sanitize_header_value(self, value: str) -> str:
         """Sanitize header values to prevent multi-line or shell injection in potential log/shell scenarios"""
@@ -931,7 +944,7 @@ class ReconMaster:
         if not target_links:
             return
 
-        connector = aiohttp.TCPConnector(ssl=False, limit=self.threads, limit_per_host=30)
+        connector = aiohttp.TCPConnector(ssl=True, limit=self.threads, limit_per_host=30)
         async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=10), connector=connector) as session:
             async def check_link(url):
                 if not await self.circuit_breaker.check_can_proceed():

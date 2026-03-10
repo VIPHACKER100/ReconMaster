@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# ReconMaster v4.0.0-Titan Installation Script
-# Automated setup for professional reconnaissance infrastructure (Titan Edition)
+# ReconMaster v4.2.0-Elite Installation Script
+# Automated setup for professional reconnaissance infrastructure (Elite Edition)
 
 # Color codes for output
 GREEN='\033[0;32m'
@@ -22,7 +22,7 @@ echo -e "${CYAN}${BOLD}"
 echo "╦═╗╔═╗╔═╗╔═╗╔╗╔╔╦╗╔═╗╔═╗╔╦╗╔═╗╦═╗"
 echo "╠╦╝║╣ ║  ║ ║║║║║║║╠═╣╚═╗ ║ ║╣ ╠╦╝"
 echo "╩╚═╚═╝╚═╝╚═╝╝╚╝╩ ╩╩ ╩╚═╝ ╩ ╚═╝╩╚═"
-echo -e "${NC}${YELLOW} Professional Installer for v4.0.0-Titan${NC}\n"
+echo -e "${NC}${YELLOW} Professional Installer for v4.2.0-Elite${NC}\n"
 
 if [ "$EUID" -ne 0 ]; then
     print_error "This installer requires root privileges for system dependencies. Please run with sudo."
@@ -105,7 +105,7 @@ print_status "Finalizing setup..."
 mkdir -p "$REPO_DIR/bin"
 
 # Link Go binaries to local bin for portability
-for bin in subfinder httpx nuclei dnsx katana ffuf gowitness assetfinder amass subjs subzy; do
+for bin in subfinder httpx nuclei dnsx katana ffuf gowitness assetfinder amass subjs subzy waybackurls gf gau; do
     if [ -f "$HOME/go/bin/$bin" ]; then
         ln -sf "$HOME/go/bin/$bin" "$REPO_DIR/bin/$bin"
     fi
@@ -125,7 +125,7 @@ if [ ! -f "wordlists/dns_common.txt" ]; then
 fi
 
 echo -e "\n${GREEN}======================================================="
-echo "      ReconMaster v4.0.0-Titan Setup Completed!"
+echo "      ReconMaster v4.2.0-Elite Setup Completed!"
 echo "======================================================="
 echo -e "${NC}"
 echo -e "You can now run: ${BOLD}reconmaster -d example.com${NC}"
